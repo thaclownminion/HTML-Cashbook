@@ -1,0 +1,3544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Apophis Cashbook</title>
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%232F6F62'/%3E%3Ctext x='50' y='68' font-size='58' text-anchor='middle' fill='%23F3F4EE' font-family='Georgia,serif'%3E%E2%82%AC%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+
+(function(){
+  var CHART_CDN_URLS = [
+    'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js',
+    'https://unpkg.com/chart.js@4.4.4/dist/chart.umd.min.js'
+  ];
+  window.loadChartJs = function(onDone){
+    var i = 0;
+    function tryNext(){
+      if(i >= CHART_CDN_URLS.length){ if(onDone) onDone(false); return; }
+      var url = CHART_CDN_URLS[i++];
+      var s = document.createElement('script');
+      s.src = url;
+      s.crossOrigin = 'anonymous';
+      s.referrerPolicy = 'no-referrer';
+      s.onload = function(){ if(onDone) onDone(true); };
+      s.onerror = function(){ s.remove(); tryNext(); };
+      document.head.appendChild(s);
+    }
+    tryNext();
+  };
+  window.loadChartJs(function(ok){
+    window.__chartJsLoaded = ok;
+    if(window.__onChartJsReady) window.__onChartJsReady(ok);
+  });
+})();
+</script>
+<style>
+/* ============================================================
+   LEDGER — design tokens
+   ============================================================ */
+:root{
+  --bg:#F3F4EE;
+  --bg-elev:#FFFFFF;
+  --bg-sunken:#EAEBE2;
+  --ink:#16211F;
+  --ink-soft:#4B5A56;
+  --ink-faint:#828F89;
+  --border:#DCDDD2;
+  --border-soft:#E7E8DF;
+  --accent:#2F6F62;
+  --accent-ink:#F3F4EE;
+  --accent-soft:#DCE8E3;
+  --brass:#9C7A42;
+  --brass-soft:#EFE6D3;
+  --income:#2F6F62;
+  --income-soft:#DCEAE5;
+  --expense:#A8492F;
+  --expense-soft:#F3E1DA;
+  --transfer:#446080;
+  --transfer-soft:#E1E7EE;
+  --danger:#A8492F;
+  --danger-soft:#F3E1DA;
+  --shadow:rgba(22,33,31,0.10);
+  --shadow-lg:rgba(22,33,31,0.16);
+  --radius-sm:6px;
+  --radius:12px;
+  --radius-lg:18px;
+  --font-display:'Fraunces',Georgia,'Times New Roman',serif;
+  --font-body:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --font-mono:'IBM Plex Mono','SFMono-Regular',Menlo,Consolas,monospace;
+  --topbar-h:60px;
+  --bottomnav-h:64px;
+  --sidebar-w:236px;
+  color-scheme:light;
+}
+[data-theme="dark"]{
+  --bg:#101B1A;
+  --bg-elev:#172422;
+  --bg-sunken:#0C1413;
+  --ink:#E9ECE7;
+  --ink-soft:#AAB8B1;
+  --ink-faint:#758079;
+  --border:#283633;
+  --border-soft:#1E2C29;
+  --accent:#4FAE93;
+  --accent-ink:#0B1A17;
+  --accent-soft:#1B332C;
+  --brass:#D2AE73;
+  --brass-soft:#2E2818;
+  --income:#4FAE93;
+  --income-soft:#17332B;
+  --expense:#E08A66;
+  --expense-soft:#3A2620;
+  --transfer:#8FADCC;
+  --transfer-soft:#1F2C38;
+  --danger:#E08A66;
+  --danger-soft:#3A2620;
+  --shadow:rgba(0,0,0,0.35);
+  --shadow-lg:rgba(0,0,0,0.5);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  font-size:15px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  transition:background .25s ease,color .25s ease;
+}
+h1,h2,h3,h4{
+  font-family:var(--font-display);
+  font-weight:600;
+  margin:0;
+  color:var(--ink);
+  letter-spacing:-0.01em;
+}
+p{margin:0;}
+a{color:var(--accent);}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit;}
+button{cursor:pointer;}
+ul{list-style:none;margin:0;padding:0;}
+::selection{background:var(--accent-soft);color:var(--ink);}
+.tnum{font-variant-numeric:tabular-nums;}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important;}}
+
+/* ============ App shell / layout ============ */
+#app{min-height:100vh;display:flex;flex-direction:column;}
+.shell{display:flex;flex:1;min-height:100vh;}
+
+.sidebar{
+  width:var(--sidebar-w);
+  flex-shrink:0;
+  background:var(--bg-elev);
+  border-right:1px solid var(--border-soft);
+  display:flex;
+  flex-direction:column;
+  padding:22px 14px;
+  position:sticky;
+  top:0;
+  height:100vh;
+}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 10px 22px;}
+.brand-mark{
+  width:34px;height:34px;border-radius:9px;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-display);font-size:19px;color:var(--accent-ink);flex-shrink:0;
+}
+.brand-name{font-family:var(--font-display);font-weight:600;font-size:19px;letter-spacing:-0.01em;}
+.brand-sub{font-size:11px;color:var(--ink-faint);letter-spacing:.04em;text-transform:uppercase;margin-top:-2px;}
+
+.nav-list{display:flex;flex-direction:column;gap:2px;flex:1;}
+.nav-tab{
+  display:flex;align-items:center;gap:11px;
+  padding:10px 12px;border-radius:8px 3px 3px 8px;
+  color:var(--ink-soft);text-decoration:none;font-weight:500;font-size:14px;
+  border-left:3px solid transparent;
+  background:transparent;border-top:none;border-right:none;border-bottom:none;
+  width:100%;text-align:left;position:relative;
+}
+.icon{width:16px;height:16px;flex-shrink:0;vertical-align:-3px;}
+.nav-tab .icon{width:18px;height:18px;flex-shrink:0;display:inline-flex;vertical-align:baseline;}
+.nav-tab:hover{background:var(--bg-sunken);color:var(--ink);}
+.nav-tab.active{background:var(--accent-soft);color:var(--accent);border-left-color:var(--accent);font-weight:600;}
+
+.sidebar-foot{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--border-soft);}
+.sync-pill{
+  display:flex;align-items:center;gap:7px;padding:8px 10px;border-radius:8px;
+  font-size:12.5px;color:var(--ink-soft);background:var(--bg-sunken);cursor:pointer;border:1px solid transparent;
+}
+.sync-pill:hover{border-color:var(--border);}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--ink-faint);flex-shrink:0;}
+.sync-pill[data-state="synced"] .sync-dot{background:var(--income);}
+.sync-pill[data-state="syncing"] .sync-dot{background:var(--brass);animation:pulse 1s ease-in-out infinite;}
+.sync-pill[data-state="unsynced"] .sync-dot{background:var(--expense);}
+.sync-pill[data-state="error"] .sync-dot{background:var(--expense);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+.sidebar-toggle{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;font-size:12.5px;color:var(--ink-soft);}
+.credits-row{display:flex;align-items:center;gap:6px;padding:4px 10px 0;}
+.credits-row .btn.icon-only{width:30px;height:30px;padding:6px;}
+.credits-text{font-size:11px;color:var(--ink-faint);margin-left:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column;}
+.topbar{
+  display:none;
+  align-items:center;justify-content:space-between;
+  height:var(--topbar-h);padding:0 16px;
+  background:var(--bg-elev);border-bottom:1px solid var(--border-soft);
+  position:sticky;top:0;z-index:20;
+}
+.topbar-title{font-family:var(--font-display);font-weight:600;font-size:18px;}
+.view{padding:26px 32px 56px;max-width:1180px;width:100%;margin:0 auto;flex:1;}
+.view-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap;}
+.view-head h1{font-size:26px;}
+.view-head .sub{color:var(--ink-faint);font-size:13.5px;margin-top:4px;}
+
+.bottom-nav{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;z-index:30;
+  background:var(--bg-elev);border-top:1px solid var(--border-soft);
+  padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+  justify-content:space-around;
+}
+.bottom-nav button{
+  background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:2px;
+  color:var(--ink-faint);font-size:10.5px;padding:6px 8px;border-radius:8px;flex:1;font-weight:500;
+}
+.bottom-nav button .icon{width:20px;height:20px;}
+.bottom-nav button.active{color:var(--accent);}
+
+.fab{
+  position:fixed;right:20px;bottom:calc(var(--bottomnav-h) + 18px);z-index:25;
+  width:56px;height:56px;border-radius:50%;background:var(--accent);color:var(--accent-ink);
+  border:none;box-shadow:0 6px 18px var(--shadow-lg);display:flex;align-items:center;justify-content:center;
+  font-size:26px;line-height:1;
+}
+.fab .icon{width:24px;height:24px;vertical-align:0;}
+@media (min-width:860px){.fab{right:36px;bottom:36px;}}
+
+.privacy-fab{
+  position:fixed;left:20px;bottom:calc(var(--bottomnav-h) + 18px);z-index:25;
+  width:48px;height:48px;border-radius:50%;background:var(--bg-elev);color:var(--ink-soft);
+  border:1px solid var(--border);box-shadow:0 6px 18px var(--shadow);display:flex;align-items:center;justify-content:center;
+}
+.privacy-fab:hover{border-color:var(--accent);color:var(--ink);}
+.privacy-fab.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);}
+.privacy-fab .icon{width:21px;height:21px;vertical-align:0;}
+@media (min-width:860px){.privacy-fab{display:none;}}
+
+/* ============ Buttons & forms ============ */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:9px 16px;border-radius:9px;border:1px solid var(--border);
+  background:var(--bg-elev);color:var(--ink);font-weight:600;font-size:13.5px;
+  text-decoration:none;
+  transition:transform .08s ease,border-color .15s ease,background .15s ease;
+}
+.btn:hover{border-color:var(--accent);}
+.btn:active{transform:scale(.97);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
+.btn.primary:hover{opacity:.92;}
+.btn.danger{color:var(--expense);border-color:var(--expense-soft);}
+.btn.danger:hover{border-color:var(--expense);}
+.btn.ghost{border-color:transparent;background:transparent;}
+.btn.ghost:hover{background:var(--bg-sunken);}
+.btn.sm{padding:6px 11px;font-size:12.5px;border-radius:7px;}
+.btn.icon-only{padding:8px;width:36px;height:36px;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.field label{font-size:12.5px;font-weight:600;color:var(--ink-soft);}
+.field .hint,.hint{font-size:11.5px;color:var(--ink-faint);}
+input[type=text],input[type=number],input[type=date],input[type=password],input[type=url],input[type=email],select,textarea{
+  padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-elev);color:var(--ink);width:100%;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+textarea{resize:vertical;min-height:64px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media (max-width:520px){.field-row{grid-template-columns:1fr;}}
+.type-toggle{display:flex;border:1px solid var(--border);border-radius:9px;overflow:hidden;}
+.type-toggle button{flex:1;border:none;background:var(--bg-elev);padding:9px 6px;font-weight:600;font-size:12.5px;color:var(--ink-soft);border-right:1px solid var(--border);}
+.type-toggle button:last-child{border-right:none;}
+.type-toggle button.active{background:var(--accent-soft);color:var(--accent);}
+.type-toggle button.active[data-type="income"]{background:var(--income-soft);color:var(--income);}
+.type-toggle button.active[data-type="expense"]{background:var(--expense-soft);color:var(--expense);}
+.type-toggle button.active[data-type="transfer"]{background:var(--transfer-soft);color:var(--transfer);}
+.swatch-picker{display:flex;flex-wrap:wrap;gap:8px;}
+.swatch{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;}
+.swatch.selected{border-color:var(--ink);}
+.checkbox-row{display:flex;align-items:center;gap:8px;font-size:13px;}
+
+/* ============ Cards ============ */
+.card{background:var(--bg-elev);border:1px solid var(--border-soft);border-radius:var(--radius);padding:18px;box-shadow:0 1px 2px var(--shadow);}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+
+.acct-card{
+  position:relative;background:var(--bg-elev);border:1px solid var(--border-soft);border-radius:var(--radius);
+  padding:18px 18px 16px;overflow:hidden;text-decoration:none;color:var(--ink);display:block;
+  box-shadow:0 1px 2px var(--shadow);
+}
+.acct-card::before{
+  content:"";position:absolute;top:0;left:18px;width:34px;height:8px;border-radius:0 0 4px 4px;
+  background:var(--tab-color,var(--accent));
+}
+.acct-card .name{font-weight:600;font-size:14.5px;margin-top:6px;}
+.acct-card .type{font-size:11.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.03em;margin-top:1px;}
+.acct-card .bal{font-family:var(--font-mono);font-size:22px;font-weight:600;margin-top:14px;letter-spacing:-0.01em;}
+.acct-card .bal.negative{color:var(--expense);}
+
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px;}
+.stat-card{background:var(--bg-elev);border:1px solid var(--border-soft);border-radius:var(--radius);padding:16px 18px;}
+.stat-card .label{font-size:11.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.04em;font-weight:600;}
+.stat-card .value{font-family:var(--font-display);font-size:28px;font-weight:600;margin-top:6px;letter-spacing:-0.01em;}
+.stat-card .value.income{color:var(--income);}
+.stat-card .value.expense{color:var(--expense);}
+.stat-card .delta{font-size:11.5px;color:var(--ink-faint);margin-top:3px;}
+
+.section-title{display:flex;align-items:center;justify-content:space-between;margin:30px 0 12px;}
+.section-title h2{font-size:16px;}
+.section-title .link{font-size:12.5px;color:var(--accent);font-weight:600;text-decoration:none;background:none;border:none;}
+
+.chart-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;}
+@media (max-width:820px){.chart-grid{grid-template-columns:1fr;}}
+.chart-card{background:var(--bg-elev);border:1px solid var(--border-soft);border-radius:var(--radius);padding:16px 18px;}
+.chart-card h3{font-size:13.5px;margin-bottom:12px;}
+.chart-wrap{position:relative;height:230px;}
+.chart-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:230px;color:var(--ink-faint);font-size:13px;text-align:center;padding:0 20px;}
+
+/* ============ Ledger table (signature element) ============ */
+.ledger{width:100%;border-collapse:collapse;}
+.ledger thead th{
+  text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);
+  padding:8px 10px;border-bottom:1px solid var(--border);font-weight:600;
+}
+.ledger tbody tr{border-bottom:1px solid var(--border-soft);}
+.ledger tbody tr:hover{background:var(--bg-sunken);}
+.ledger td{padding:11px 10px;vertical-align:middle;font-size:13.5px;}
+.ledger td.num,.ledger th.num{text-align:right;font-family:var(--font-mono);}
+.ledger .desc{font-weight:500;}
+.ledger .desc .meta{display:block;font-size:11.5px;color:var(--ink-faint);font-weight:400;margin-top:1px;}
+.repeat-badge{display:inline-flex;vertical-align:-3px;margin-right:5px;color:var(--brass);}
+.repeat-badge .icon{width:13px;height:13px;}
+.ledger-mobile .desc .repeat-badge{vertical-align:-2px;}
+.ledger .amt{font-family:var(--font-mono);font-weight:600;white-space:nowrap;}
+.ledger .amt.income{color:var(--income);}
+.ledger .amt.expense{color:var(--expense);}
+.ledger .amt.transfer{color:var(--transfer);}
+.ledger .running{font-family:var(--font-mono);color:var(--ink-soft);white-space:nowrap;}
+.cat-chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:3px 9px;border-radius:20px;background:var(--bg-sunken);color:var(--ink-soft);white-space:nowrap;}
+.cat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.row-actions{display:flex;gap:4px;justify-content:flex-end;opacity:0;transition:opacity .1s;}
+.ledger tbody tr:hover .row-actions{opacity:1;}
+.acct-tag{font-size:11px;color:var(--ink-faint);}
+
+.ledger-mobile{display:none;flex-direction:column;}
+.ledger-mobile .txn-row{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:12px 4px;border-bottom:1px solid var(--border-soft);
+}
+.ledger-mobile .txn-left{min-width:0;}
+.ledger-mobile .txn-left .desc{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ledger-mobile .txn-left .meta{font-size:12px;color:var(--ink-faint);margin-top:2px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.ledger-mobile .txn-right{text-align:right;flex-shrink:0;}
+.ledger-mobile .amt{font-family:var(--font-mono);font-weight:600;}
+.ledger-mobile .running{display:block;font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin-top:2px;}
+
+@media (max-width:760px){
+  .ledger-desktop{display:none;}
+  .ledger-mobile{display:flex;}
+}
+
+.filters-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:18px;background:var(--bg-elev);border:1px solid var(--border-soft);border-radius:var(--radius);padding:14px;}
+.filters-bar .field{margin-bottom:0;min-width:130px;flex:1;}
+.filters-bar .field.search{flex:2;min-width:180px;}
+
+.empty-state{text-align:center;padding:50px 20px;color:var(--ink-faint);}
+.empty-state .glyph{font-family:var(--font-display);font-size:34px;color:var(--ink-faint);margin-bottom:8px;}
+.empty-state h3{color:var(--ink-soft);font-size:15px;margin-bottom:6px;}
+.empty-state p{font-size:13px;max-width:340px;margin:0 auto;}
+
+/* ============ Modal ============ */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(10,15,14,.5);display:flex;align-items:flex-end;justify-content:center;
+  z-index:100;padding:0;backdrop-filter:blur(2px);
+}
+.modal{
+  background:var(--bg-elev);width:100%;max-width:480px;max-height:92vh;overflow-y:auto;
+  border-radius:18px 18px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));
+  box-shadow:0 -4px 30px var(--shadow-lg);
+}
+@media (min-width:640px){
+  .modal-overlay{align-items:center;}
+  .modal{border-radius:16px;padding:26px;}
+}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.modal-head h2{font-size:19px;}
+.modal-close{background:none;border:none;font-size:20px;color:var(--ink-faint);padding:4px 8px;}
+.modal-close .icon{width:18px;height:18px;vertical-align:0;}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+.modal p.warn,p.warn{background:var(--expense-soft);color:var(--expense);padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:14px;}
+.modal p.info{background:var(--accent-soft);color:var(--accent);padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:14px;}
+
+/* ============ Toasts ============ */
+.toast-root{position:fixed;bottom:calc(var(--bottomnav-h) + 14px);left:50%;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;align-items:center;width:92%;max-width:420px;}
+@media (min-width:860px){.toast-root{bottom:20px;}}
+.toast{
+  background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:9px;font-size:13px;font-weight:500;
+  box-shadow:0 4px 16px var(--shadow-lg);display:flex;align-items:center;gap:10px;width:100%;
+  animation:toast-in .18s ease;
+}
+[data-theme="dark"] .toast{background:var(--bg-elev);color:var(--ink);border:1px solid var(--border);}
+.toast.error{background:var(--expense);color:#fff;}
+.toast .icon{flex-shrink:0;}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* ============ Onboarding / settings ============ */
+.onboard-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--bg);}
+.onboard-card{max-width:460px;width:100%;background:var(--bg-elev);border:1px solid var(--border-soft);border-radius:var(--radius-lg);padding:32px 28px;box-shadow:0 8px 30px var(--shadow);}
+.onboard-card .brand{padding:0 0 18px;}
+.onboard-card h1{font-size:21px;margin-bottom:6px;}
+.onboard-card .lead{color:var(--ink-soft);font-size:13.5px;margin-bottom:22px;}
+.storage-pick-card{display:flex;align-items:center;gap:14px;text-align:left;padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--bg-elev);width:100%;}
+.storage-pick-card:hover{border-color:var(--accent);}
+.storage-pick-icon{font-size:26px;flex-shrink:0;width:40px;text-align:center;}
+.storage-pick-title{font-weight:700;font-size:14.5px;color:var(--ink);}
+.storage-pick-sub{font-size:12.5px;color:var(--ink-faint);margin-top:2px;}
+.settings-section{margin-bottom:28px;}
+.settings-section h2{font-size:15px;margin-bottom:4px;}
+.settings-section .sub{color:var(--ink-faint);font-size:12.5px;margin-bottom:14px;}
+.manage-list{display:flex;flex-direction:column;gap:8px;}
+.manage-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border-soft);border-radius:9px;background:var(--bg-elev);}
+.manage-row .dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+.manage-row .name{font-weight:600;font-size:13.5px;flex:1;min-width:0;}
+.manage-row .sub2{font-size:11.5px;color:var(--ink-faint);}
+.manage-row .actions{display:flex;gap:4px;}
+.archived-badge{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--bg-sunken);color:var(--ink-faint);text-transform:uppercase;letter-spacing:.03em;}
+
+.conn-status{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:9px 12px;border-radius:8px;margin-bottom:14px;}
+.conn-status.ok{background:var(--income-soft);color:var(--income);}
+.conn-status.bad{background:var(--expense-soft);color:var(--expense);}
+.cors-note{background:var(--brass-soft);color:var(--brass);border-radius:9px;padding:12px 14px;font-size:12.5px;margin-top:6px;line-height:1.55;}
+.cors-note code{background:rgba(0,0,0,.08);padding:1px 5px;border-radius:4px;font-family:var(--font-mono);font-size:11.5px;}
+
+/* ============ Misc ============ */
+.muted{color:var(--ink-faint);}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
+.divider{height:1px;background:var(--border-soft);margin:20px 0;border:none;}
+.skeleton{background:linear-gradient(90deg,var(--bg-sunken) 25%,var(--border-soft) 37%,var(--bg-sunken) 63%);background-size:400% 100%;animation:sk 1.4s ease infinite;border-radius:8px;}
+@keyframes sk{0%{background-position:100% 50%;}100%{background-position:0 50%;}}
+.loading-shell{display:flex;align-items:center;justify-content:center;min-height:100vh;color:var(--ink-faint);font-size:13.5px;gap:10px;}
+.spinner{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--accent);animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+@media (min-width:860px){
+  .sidebar{display:flex;}
+  .bottom-nav{display:none;}
+  .topbar{display:none;}
+}
+@media (max-width:859px){
+  .sidebar{display:none;}
+  .topbar{display:flex;}
+  .bottom-nav{display:flex;}
+  .view{padding:18px 16px calc(90px + env(safe-area-inset-bottom));}
+  body{padding-bottom:0;}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast-root" class="toast-root" aria-live="polite"></div>
+<script>
+(function(){
+'use strict';
+
+/* links */
+var CREDITS_NAME = 'Apophis';
+var BUY_ME_A_COFFEE_URL = 'https://buymeacoffee.com/apophisdevs';
+var GITHUB_URL = 'https://github.com/thaclownminion/HTML-Cashbook';
+/* ============================================================ */
+
+/* ============================================================
+   CONSTANTS
+   ============================================================ */
+var LS_SETTINGS = 'ledger_settings_v1';
+var LS_DATA_CACHE = 'ledger_data_cache_v1';
+var LS_DATA_SHA = 'ledger_data_sha_v1';
+var LS_DIRTY = 'ledger_dirty_v1';
+var LS_THEME = 'ledger_theme_v1';
+var LS_PRIVACY = 'ledger_privacy_v1';
+var IDB_NAME = 'ledger_idb_v1';
+var IDB_STORE = 'handles';
+var IDB_KEY_FILE = 'cashbook-file-handle';
+
+var CURRENCIES = ['EUR','USD','GBP','CHF','JPY','CAD','AUD','SEK','NOK','DKK','PLN','CZK','INR','BRL','MXN','CNY','NZD','ZAR'];
+
+var ACCOUNT_COLORS = ['#2F6F62','#446080','#9C7A42','#A8492F','#6B5B95','#3E7C9E','#7A8450','#B0616A'];
+var CATEGORY_COLORS = ['#2F6F62','#A8492F','#446080','#9C7A42','#6B5B95','#3E7C9E','#7A8450','#B0616A','#4B5A56','#C77B58'];
+
+var DEFAULT_CATEGORIES_SEED = [
+  {name:'Salary',icon:'💼',defaultType:'income',color:'#2F6F62'},
+  {name:'Other Income',icon:'➕',defaultType:'income',color:'#3E7C9E'},
+  {name:'Groceries',icon:'🛒',defaultType:'expense',color:'#A8492F'},
+  {name:'Rent & Housing',icon:'🏠',defaultType:'expense',color:'#9C7A42'},
+  {name:'Utilities',icon:'💡',defaultType:'expense',color:'#6B5B95'},
+  {name:'Transport',icon:'🚌',defaultType:'expense',color:'#446080'},
+  {name:'Dining Out',icon:'🍽️',defaultType:'expense',color:'#C77B58'},
+  {name:'Entertainment',icon:'🎬',defaultType:'expense',color:'#7A8450'},
+  {name:'Health',icon:'💊',defaultType:'expense',color:'#B0616A'},
+  {name:'Shopping',icon:'🛍️',defaultType:'expense',color:'#4B5A56'},
+  {name:'Other',icon:'•',defaultType:'expense',color:'#828F89'}
+];
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+function uid(prefix){
+  return prefix+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+}
+
+function escapeHtml(str){
+  if(str===null||str===undefined) return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function todayISO(){
+  var d=new Date();
+  var tz = d.getTimezoneOffset()*60000;
+  return new Date(d - tz).toISOString().slice(0,10);
+}
+
+function nowISO(){ return new Date().toISOString(); }
+
+function formatMoney(amount, currency){
+  currency = currency || (state.data && state.data.meta.defaultCurrency) || 'EUR';
+  if(state.privacyMode) return maskedMoney(currency);
+  var locale = navigator.language || 'en-US';
+  try{
+    return new Intl.NumberFormat(locale, {style:'currency', currency:currency, currencyDisplay:'symbol'}).format(amount);
+  }catch(e){
+    return currency+' '+amount.toFixed(2);
+  }
+}
+
+// Renders a currency symbol followed by a dot mask, so figures stay hidden
+// while it's still visible which currency an amount is in.
+function maskedMoney(currency){
+  var locale = navigator.language || 'en-US';
+  try{
+    var parts = new Intl.NumberFormat(locale, {style:'currency', currency:currency, currencyDisplay:'symbol'}).formatToParts(0);
+    var symbol = parts.filter(function(p){ return p.type==='currency'; }).map(function(p){ return p.value; }).join('');
+    return (symbol || currency) + ' \u2022\u2022\u2022\u2022';
+  }catch(e){
+    return (currency||'') + ' \u2022\u2022\u2022\u2022';
+  }
+}
+
+function formatNumber(n){
+  var locale = navigator.language || 'en-US';
+  try{ return new Intl.NumberFormat(locale,{maximumFractionDigits:2}).format(n); }catch(e){ return String(n); }
+}
+
+function formatDate(iso, opts){
+  if(!iso) return '';
+  var d = new Date(iso+'T00:00:00');
+  if(isNaN(d.getTime())) return iso;
+  var locale = navigator.language || 'en-US';
+  opts = opts || {day:'numeric', month:'short', year:'numeric'};
+  try{ return new Intl.DateTimeFormat(locale, opts).format(d); }catch(e){ return iso; }
+}
+
+function formatDateShort(iso){ return formatDate(iso, {day:'numeric', month:'short'}); }
+
+function monthLabel(ym){
+  var parts = ym.split('-');
+  var d = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, 1);
+  var locale = navigator.language || 'en-US';
+  try{ return new Intl.DateTimeFormat(locale, {month:'short', year:'numeric'}).format(d); }catch(e){ return ym; }
+}
+
+function debounce(fn, wait){
+  var t=null;
+  return function(){
+    var args=arguments, ctx=this;
+    clearTimeout(t);
+    t=setTimeout(function(){ fn.apply(ctx,args); }, wait);
+  };
+}
+
+function b64EncodeUnicode(str){
+  var bytes = new TextEncoder().encode(str);
+  var binary = '';
+  for(var i=0;i<bytes.length;i++){ binary += String.fromCharCode(bytes[i]); }
+  return btoa(binary);
+}
+
+function b64DecodeUnicode(b64){
+  var binary = atob(b64);
+  var bytes = new Uint8Array(binary.length);
+  for(var i=0;i<binary.length;i++){ bytes[i] = binary.charCodeAt(i); }
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
+function downloadBlob(filename, content, mime){
+  var blob = new Blob([content], {type: mime || 'text/plain'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+}
+
+function toCSV(rows, headers){
+  var lines = [headers.map(csvCell).join(',')];
+  rows.forEach(function(r){ lines.push(headers.map(function(h){ return csvCell(r[h]); }).join(',')); });
+  return lines.join('\r\n');
+}
+function csvCell(v){
+  if(v===null||v===undefined) v='';
+  v = String(v);
+  if(/[",\n]/.test(v)) v = '"'+v.replace(/"/g,'""')+'"';
+  return v;
+}
+
+function qs(sel, root){ return (root||document).querySelector(sel); }
+function qsa(sel, root){ return Array.prototype.slice.call((root||document).querySelectorAll(sel)); }
+
+function monthKey(dateIso){ return dateIso.slice(0,7); }
+
+
+/* ============================================================
+   GLOBAL STATE
+   ============================================================ */
+var state = {
+  settings: null,        // gitea connection settings
+  data: null,             // {meta, accounts, categories, transactions}
+  sha: null,               // last known remote file sha
+  dirty: false,            // local changes not yet pushed
+  syncState: 'idle',       // idle | syncing | synced | unsynced | error | conflict | offline
+  lastError: null,
+  lastSyncedAt: null,
+  route: {name:'dashboard', params:{}},
+  theme: 'light',
+  privacyMode: false,      // when true, monetary amounts are masked on screen
+  filters: {                // All-transactions view filters
+    q:'', account:'', category:'', type:'', from:'', to:'', sort:'date_desc'
+  },
+  charts: {},               // canvasId -> Chart instance
+  pendingConflict: null,    // remote payload waiting for user decision
+  _pushing: false           // reentrancy guard for pushToRemote
+};
+
+function defaultData(){
+  return {
+    meta: { schemaVersion: 1, defaultCurrency: 'EUR', updatedAt: nowISO() },
+    accounts: [],
+    categories: DEFAULT_CATEGORIES_SEED.map(function(c){
+      return { id: uid('cat'), name:c.name, icon:c.icon, color:c.color, defaultType:c.defaultType };
+    }),
+    transactions: [],
+    recurring: []
+  };
+}
+
+/* ============================================================
+   LOCAL STORAGE — settings
+   ============================================================ */
+function loadSettings(){
+  try{
+    var raw = localStorage.getItem(LS_SETTINGS);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+function saveSettings(s){
+  localStorage.setItem(LS_SETTINGS, JSON.stringify(s));
+  state.settings = s;
+}
+function isConfigured(){
+  var s = state.settings;
+  if(!s || !s.storageMode) return false;
+  if(s.storageMode === 'gitea') return !!(s.url && s.owner && s.repo && s.path && s.token);
+  if(s.storageMode === 'local') return !!s.localMode;
+  return false;
+}
+
+/* ============================================================
+   LOCAL STORAGE — data cache (survives refresh / offline)
+   ============================================================ */
+function loadCache(){
+  try{
+    var raw = localStorage.getItem(LS_DATA_CACHE);
+    var sha = localStorage.getItem(LS_DATA_SHA);
+    var dirty = localStorage.getItem(LS_DIRTY) === '1';
+    return { data: raw ? JSON.parse(raw) : null, sha: sha || null, dirty: dirty };
+  }catch(e){ return {data:null, sha:null, dirty:false}; }
+}
+function saveCacheData(){
+  try{ localStorage.setItem(LS_DATA_CACHE, JSON.stringify(state.data)); }catch(e){/* quota etc */}
+}
+function saveCacheSha(){
+  if(state.sha) localStorage.setItem(LS_DATA_SHA, state.sha);
+  else localStorage.removeItem(LS_DATA_SHA);
+}
+function saveDirtyFlag(){
+  localStorage.setItem(LS_DIRTY, state.dirty ? '1' : '0');
+}
+
+function loadTheme(){
+  var t = localStorage.getItem(LS_THEME);
+  if(t) return t;
+  return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+}
+function applyTheme(t){
+  state.theme = t;
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem(LS_THEME, t);
+}
+
+function loadPrivacyMode(){
+  try{ return localStorage.getItem(LS_PRIVACY) === '1'; }catch(e){ return false; }
+}
+function savePrivacyMode(on){
+  try{ localStorage.setItem(LS_PRIVACY, on ? '1' : '0'); }catch(e){/* ignore */}
+}
+
+/* ============================================================
+   LOCAL FILE STORAGE — an alternative to Gitea. Uses the File
+   System Access API where the browser supports it (Chrome, Edge,
+   other Chromium browsers), so the app can read/write a specific
+   file directly. The file handle itself can't go in localStorage
+   (it isn't a string), so it's kept in IndexedDB instead. Browsers
+   without that API (Firefox, Safari) fall back to manual
+   save/load via a normal file download + <input type=file>.
+   ============================================================ */
+function idbOpen(){
+  return new Promise(function(resolve, reject){
+    if(!('indexedDB' in window)){ reject(new Error('no-indexeddb')); return; }
+    var req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = function(){ req.result.createObjectStore(IDB_STORE); };
+    req.onsuccess = function(){ resolve(req.result); };
+    req.onerror = function(){ reject(req.error || new Error('idb-open-failed')); };
+  });
+}
+function idbSet(key, value){
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(value, key);
+      tx.oncomplete = function(){ resolve(); };
+      tx.onerror = function(){ reject(tx.error); };
+    });
+  });
+}
+function idbGet(key){
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction(IDB_STORE, 'readonly');
+      var req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = function(){ resolve(req.result || null); };
+      req.onerror = function(){ reject(req.error); };
+    });
+  });
+}
+function idbDelete(key){
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).delete(key);
+      tx.oncomplete = function(){ resolve(); };
+      tx.onerror = function(){ reject(tx.error); };
+    });
+  });
+}
+
+function localFileApiSupported(){
+  return typeof window.showOpenFilePicker === 'function' && typeof window.showSaveFilePicker === 'function';
+}
+
+async function ensureLocalFilePermission(handle, mode){
+  mode = mode || 'readwrite';
+  try{
+    var opts = { mode: mode };
+    var q = await handle.queryPermission(opts);
+    if(q === 'granted') return true;
+    var r = await handle.requestPermission(opts);
+    return r === 'granted';
+  }catch(e){ return false; }
+}
+
+async function pickExistingLocalFile(){
+  var handles = await window.showOpenFilePicker({
+    types: [{ description:'JSON', accept: {'application/json': ['.json']} }],
+    excludeAcceptAllOption: false,
+    multiple: false
+  });
+  var handle = handles[0];
+  var granted = await ensureLocalFilePermission(handle, 'readwrite');
+  if(!granted) throw new Error('permission-denied');
+  await idbSet(IDB_KEY_FILE, handle);
+  return handle;
+}
+
+async function createNewLocalFile(suggestedName){
+  var handle = await window.showSaveFilePicker({
+    suggestedName: suggestedName || 'cashbook.json',
+    types: [{ description:'JSON', accept: {'application/json': ['.json']} }]
+  });
+  var granted = await ensureLocalFilePermission(handle, 'readwrite');
+  if(!granted) throw new Error('permission-denied');
+  await idbSet(IDB_KEY_FILE, handle);
+  return handle;
+}
+
+async function getStoredFileHandle(){
+  try{ return await idbGet(IDB_KEY_FILE); }catch(e){ return null; }
+}
+
+async function readLocalFile(handle){
+  var file = await handle.getFile();
+  return await file.text();
+}
+
+async function writeLocalFile(handle, dataObj){
+  var writable = await handle.createWritable();
+  await writable.write(JSON.stringify(dataObj, null, 2));
+  await writable.close();
+}
+
+function localFileErrorMessage(err){
+  var m = err && err.message;
+  if(m==='not-connected') return 'No file connected — reconnect it in Settings.';
+  if(m==='permission-denied') return 'Permission to access your file was not granted.';
+  if(m==='invalid-json') return 'That file is not valid JSON.';
+  if(err && err.name==='NotFoundError') return 'The file could not be found — it may have been moved or deleted. Reconnect it in Settings.';
+  if(err && err.name==='AbortError') return 'Cancelled.';
+  return (m || 'Unknown local file error') + '.';
+}
+
+// Universal fallback available in every browser: downloads the current data
+// as a JSON file. Also doubles as an easy manual backup even in fsapi mode.
+function manualSaveLocalFile(){
+  var name = (state.settings && state.settings.localFileName) || 'cashbook.json';
+  downloadBlob(name, JSON.stringify(state.data, null, 2), 'application/json');
+  toast('Downloaded '+name+'. Keep it somewhere safe.', 'ok');
+}
+
+
+/* ============================================================
+   GITEA API
+   ============================================================ */
+function GiteaError(status, message){
+  this.name='GiteaError'; this.status=status; this.message=message||('Gitea API error '+status);
+}
+GiteaError.prototype = Object.create(Error.prototype);
+
+function ConflictError(){ this.name='ConflictError'; this.message='File changed on the server since last sync'; }
+ConflictError.prototype = Object.create(Error.prototype);
+
+function encodePath(path){
+  return String(path).split('/').filter(Boolean).map(encodeURIComponent).join('/');
+}
+
+function apiBase(){
+  var s = state.settings;
+  return s.url.replace(/\/+$/,'') + '/api/v1/repos/' + encodeURIComponent(s.owner) + '/' + encodeURIComponent(s.repo) + '/contents/' + encodePath(s.path);
+}
+
+function authHeaders(){
+  return { 'Authorization': 'token ' + state.settings.token, 'Accept':'application/json' };
+}
+
+async function safeText(res){ try{ return await res.text(); }catch(e){ return ''; } }
+
+function isNetworkError(err){
+  return err instanceof TypeError; // fetch throws TypeError on network/CORS failure
+}
+
+// GET the data file. Returns {exists:true, sha, content:string} or {exists:false}
+async function giteaGetFile(){
+  var s = state.settings;
+  var url = apiBase() + '?ref=' + encodeURIComponent(s.branch || 'main');
+  var res;
+  try{
+    res = await fetch(url, { headers: authHeaders(), cache:'no-store' });
+  }catch(err){
+    if(isNetworkError(err)) throw new GiteaError(0, 'network');
+    throw err;
+  }
+  if(res.status === 404) return { exists:false };
+  if(res.status === 401 || res.status === 403) throw new GiteaError(res.status, 'auth');
+  if(!res.ok) throw new GiteaError(res.status, await safeText(res));
+  var json = await res.json();
+  var content = '';
+  if(json.content){
+    content = b64DecodeUnicode(json.content.replace(/\n/g,''));
+  } else if(json.download_url){
+    var raw = await fetch(json.download_url, {headers: authHeaders()});
+    content = await raw.text();
+  }
+  return { exists:true, sha: json.sha, content: content };
+}
+
+// PUT the data file (create or update). sha required when updating an existing file.
+async function giteaPutFile(contentStr, sha, message){
+  var s = state.settings;
+  var url = apiBase();
+  var body = {
+    message: message || ('Update cash book — ' + new Date().toLocaleString()),
+    content: b64EncodeUnicode(contentStr),
+    branch: s.branch || 'main'
+  };
+  if(sha) body.sha = sha;
+  var res;
+  try{
+    res = await fetch(url, {
+      method:'PUT',
+      headers: Object.assign({'Content-Type':'application/json'}, authHeaders()),
+      body: JSON.stringify(body)
+    });
+  }catch(err){
+    if(isNetworkError(err)) throw new GiteaError(0, 'network');
+    throw err;
+  }
+  if(res.status === 409) throw new ConflictError();
+  if(res.status === 401 || res.status === 403) throw new GiteaError(res.status, 'auth');
+  if(!res.ok){
+    var txt = await safeText(res);
+    // Gitea sometimes reports sha mismatches as 400/422 depending on version
+    if(/sha does not match|does not match|sha mismatch/i.test(txt)) throw new ConflictError();
+    throw new GiteaError(res.status, txt);
+  }
+  var json = await res.json();
+  return { sha: json.content ? json.content.sha : (json.sha || null) };
+}
+
+// Lightweight connectivity/auth check used by the Settings screen.
+async function giteaTestConnection(tempSettings){
+  var backup = state.settings;
+  state.settings = tempSettings;
+  try{
+    var url = apiBase() + '?ref=' + encodeURIComponent(tempSettings.branch || 'main');
+    var res;
+    try{
+      res = await fetch(url, { headers: authHeaders(), cache:'no-store' });
+    }catch(err){
+      if(isNetworkError(err)) return { ok:false, reason:'network' };
+      return { ok:false, reason:'unknown' };
+    }
+    if(res.status === 404) return { ok:true, fileExists:false };
+    if(res.status === 401 || res.status === 403) return { ok:false, reason:'auth' };
+    if(!res.ok) return { ok:false, reason:'http', status: res.status };
+    return { ok:true, fileExists:true };
+  } finally {
+    state.settings = backup;
+  }
+}
+
+
+/* ============================================================
+   DATA MODEL — accessors & CRUD
+   All mutating functions call persistLocal() to cache + sync.
+   ============================================================ */
+function getAccount(id){
+  return state.data.accounts.find(function(a){ return a.id===id; }) || null;
+}
+function getCategory(id){
+  return state.data.categories.find(function(c){ return c.id===id; }) || null;
+}
+function listAccounts(opts){
+  opts = opts || {};
+  var list = state.data.accounts.slice();
+  if(!opts.includeArchived) list = list.filter(function(a){ return !a.archived; });
+  return list;
+}
+function listCategories(){ return state.data.categories.slice(); }
+
+function numOr0(v){
+  var n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+}
+
+function signedAmountForAccount(txn, accountId){
+  var amt = numOr0(txn.amount);
+  if(txn.type === 'income') return txn.account === accountId ? amt : 0;
+  if(txn.type === 'expense') return txn.account === accountId ? -amt : 0;
+  if(txn.type === 'transfer'){
+    if(txn.account === accountId) return -amt;
+    if(txn.toAccount === accountId) return amt;
+    return 0;
+  }
+  return 0;
+}
+
+function accountBalance(accountId){
+  var acc = getAccount(accountId);
+  if(!acc) return 0;
+  var bal = numOr0(acc.startingBalance);
+  state.data.transactions.forEach(function(t){ bal += signedAmountForAccount(t, accountId); });
+  return bal;
+}
+
+function sortTxnsChrono(list){
+  return list.slice().sort(function(a,b){
+    if(a.date !== b.date) return a.date < b.date ? -1 : 1;
+    return (a.createdAt||'') < (b.createdAt||'') ? -1 : 1;
+  });
+}
+function sortTxnsRecent(list){
+  return list.slice().sort(function(a,b){
+    if(a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return (a.createdAt||'') < (b.createdAt||'') ? 1 : -1;
+  });
+}
+
+// Returns chronological list with running balance for one account.
+function accountLedger(accountId){
+  var acc = getAccount(accountId);
+  var txns = sortTxnsChrono(state.data.transactions.filter(function(t){
+    return t.account===accountId || t.toAccount===accountId;
+  }));
+  var running = acc ? numOr0(acc.startingBalance) : 0;
+  return txns.map(function(t){
+    var signed = signedAmountForAccount(t, accountId);
+    running += signed;
+    return { txn:t, signed:signed, running:running };
+  });
+}
+
+function filteredTransactions(f){
+  f = f || state.filters;
+  var list = state.data.transactions.slice();
+  if(f.account) list = list.filter(function(t){ return t.account===f.account || t.toAccount===f.account; });
+  if(f.category) list = list.filter(function(t){ return t.category===f.category; });
+  if(f.type) list = list.filter(function(t){ return t.type===f.type; });
+  if(f.from) list = list.filter(function(t){ return t.date >= f.from; });
+  if(f.to) list = list.filter(function(t){ return t.date <= f.to; });
+  if(f.q){
+    var q = f.q.toLowerCase();
+    list = list.filter(function(t){
+      return (t.description||'').toLowerCase().indexOf(q)>-1 ||
+             (t.notes||'').toLowerCase().indexOf(q)>-1 ||
+             (t.tags||[]).join(' ').toLowerCase().indexOf(q)>-1;
+    });
+  }
+  switch(f.sort){
+    case 'date_asc': list = sortTxnsChrono(list); break;
+    case 'amount_desc': list.sort(function(a,b){ return b.amount-a.amount; }); break;
+    case 'amount_asc': list.sort(function(a,b){ return a.amount-b.amount; }); break;
+    default: list = sortTxnsRecent(list);
+  }
+  return list;
+}
+
+function recentTransactions(n){
+  return sortTxnsRecent(state.data.transactions).slice(0, n);
+}
+
+function currentMonthKey(){ return todayISO().slice(0,7); }
+
+function monthlyTotals(ym){
+  var income=0, expense=0;
+  state.data.transactions.forEach(function(t){
+    if(monthKey(t.date) !== ym) return;
+    if(t.type==='income') income += t.amount;
+    else if(t.type==='expense') expense += t.amount;
+  });
+  return { income:income, expense:expense, net: income-expense };
+}
+
+function categoryBreakdown(ym, type){
+  type = type || 'expense';
+  var totals = {};
+  state.data.transactions.forEach(function(t){
+    if(t.type!==type) return;
+    if(ym && monthKey(t.date)!==ym) return;
+    var key = t.category || '__none__';
+    totals[key] = (totals[key]||0) + t.amount;
+  });
+  return Object.keys(totals).map(function(catId){
+    var cat = getCategory(catId);
+    return { categoryId:catId, name: cat ? cat.name : 'Uncategorized', color: cat ? cat.color : '#828F89', total: totals[catId] };
+  }).sort(function(a,b){ return b.total-a.total; });
+}
+
+function accountBreakdown(){
+  return listAccounts().map(function(a){ return { account:a, balance: accountBalance(a.id) }; });
+}
+
+// Balance trend across all (non-archived) accounts sharing the default currency, last N months.
+function balanceTrendSeries(months){
+  var accs = listAccounts();
+  var byCur = {};
+  accs.forEach(function(a){ byCur[a.currency] = (byCur[a.currency]||0)+1; });
+  var mainCur = state.data.meta.defaultCurrency;
+  var relevant = accs.filter(function(a){ return a.currency===mainCur; });
+  var today = new Date();
+  var labels = [], values = [];
+  for(var i=months-1;i>=0;i--){
+    var d = new Date(today.getFullYear(), today.getMonth()-i, 1);
+    var ym = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    var cutoff = new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().slice(0,10);
+    var total = 0;
+    relevant.forEach(function(a){
+      var bal = numOr0(a.startingBalance);
+      state.data.transactions.forEach(function(t){
+        if(t.date <= cutoff) bal += signedAmountForAccount(t, a.id);
+      });
+      total += bal;
+    });
+    labels.push(monthLabel(ym));
+    values.push(total);
+  }
+  return { labels:labels, values:values, currency:mainCur };
+}
+
+function netWorthByCurrency(){
+  var out = {};
+  listAccounts().forEach(function(a){
+    out[a.currency] = (out[a.currency]||0) + accountBalance(a.id);
+  });
+  return out;
+}
+
+/* ---------------- Accounts CRUD ---------------- */
+function addAccount(payload){
+  var acc = {
+    id: uid('acc'),
+    name: payload.name.trim(),
+    type: (payload.type||'').trim() || 'General',
+    startingBalance: parseFloat(payload.startingBalance)||0,
+    currency: payload.currency || state.data.meta.defaultCurrency,
+    color: payload.color || ACCOUNT_COLORS[state.data.accounts.length % ACCOUNT_COLORS.length],
+    archived: false,
+    createdAt: nowISO()
+  };
+  state.data.accounts.push(acc);
+  persistLocal('Add account “'+acc.name+'”');
+  return acc;
+}
+function updateAccount(id, patch){
+  var acc = getAccount(id);
+  if(!acc) return;
+  var clean = Object.assign({}, patch);
+  if(clean.startingBalance !== undefined){
+    var n = parseFloat(clean.startingBalance);
+    clean.startingBalance = isNaN(n) ? 0 : n;
+  }
+  if(clean.name !== undefined) clean.name = String(clean.name).trim();
+  if(clean.type !== undefined) clean.type = String(clean.type).trim();
+  Object.assign(acc, clean);
+  persistLocal('Update account “'+acc.name+'”');
+}
+function accountTxnCount(id){
+  return state.data.transactions.filter(function(t){ return t.account===id || t.toAccount===id; }).length;
+}
+// Recurring rules (templates, not yet-generated transactions) that still point at this account.
+function accountRecurringCount(id){
+  return (state.data.recurring||[]).filter(function(r){ return r.account===id || r.toAccount===id; }).length;
+}
+function archiveAccount(id, archived){
+  updateAccount(id, {archived: !!archived});
+}
+function deleteAccount(id){
+  var acc = getAccount(id);
+  if(!acc) return {ok:false};
+  var count = accountTxnCount(id);
+  var recCount = accountRecurringCount(id);
+  if(count>0 || recCount>0) return {ok:false, count:count, recCount:recCount};
+  state.data.accounts = state.data.accounts.filter(function(a){ return a.id!==id; });
+  persistLocal('Delete account “'+acc.name+'”');
+  return {ok:true};
+}
+// Permanently deletes an account plus every transaction that touches it
+// (as the primary account, or as the other side of a transfer), and any
+// recurring rules that still reference it. Irreversible.
+function deleteAccountCascade(id){
+  var acc = getAccount(id);
+  if(!acc) return {ok:false};
+  state.data.transactions = state.data.transactions.filter(function(t){
+    return t.account!==id && t.toAccount!==id;
+  });
+  state.data.recurring = (state.data.recurring||[]).filter(function(r){
+    return r.account!==id && r.toAccount!==id;
+  });
+  state.data.accounts = state.data.accounts.filter(function(a){ return a.id!==id; });
+  persistLocal('Delete account “'+acc.name+'” and its transactions');
+  return {ok:true};
+}
+
+/* ---------------- Categories CRUD ---------------- */
+function addCategory(payload){
+  var cat = {
+    id: uid('cat'),
+    name: payload.name.trim(),
+    icon: payload.icon || '•',
+    color: payload.color || CATEGORY_COLORS[state.data.categories.length % CATEGORY_COLORS.length],
+    defaultType: payload.defaultType || 'expense'
+  };
+  state.data.categories.push(cat);
+  persistLocal('Add category “'+cat.name+'”');
+  return cat;
+}
+function updateCategory(id, patch){
+  var cat = getCategory(id);
+  if(!cat) return;
+  Object.assign(cat, patch);
+  persistLocal('Update category “'+cat.name+'”');
+}
+function categoryUsageCount(id){
+  return state.data.transactions.filter(function(t){ return t.category===id; }).length;
+}
+function categoryRecurringCount(id){
+  return (state.data.recurring||[]).filter(function(r){ return r.category===id; }).length;
+}
+function deleteCategory(id){
+  var cat = getCategory(id);
+  if(!cat) return {ok:false};
+  var count = categoryUsageCount(id);
+  var recCount = categoryRecurringCount(id);
+  if(count>0 || recCount>0) return {ok:false, count:count, recCount:recCount};
+  state.data.categories = state.data.categories.filter(function(c){ return c.id!==id; });
+  persistLocal('Delete category “'+cat.name+'”');
+  return {ok:true};
+}
+
+/* ---------------- Transactions CRUD ---------------- */
+function addTransaction(payload){
+  var txn = {
+    id: uid('txn'),
+    date: payload.date || todayISO(),
+    account: payload.account,
+    toAccount: payload.type==='transfer' ? payload.toAccount : null,
+    type: payload.type,
+    category: payload.type==='transfer' ? null : (payload.category || null),
+    amount: Math.abs(parseFloat(payload.amount))||0,
+    currency: payload.currency || (getAccount(payload.account)||{}).currency || state.data.meta.defaultCurrency,
+    description: (payload.description||'').trim(),
+    notes: (payload.notes||'').trim(),
+    tags: payload.tags || [],
+    createdAt: nowISO(),
+    updatedAt: nowISO()
+  };
+  state.data.transactions.push(txn);
+  persistLocal('Add transaction: '+(txn.description||txn.type));
+  return txn;
+}
+function updateTransaction(id, payload){
+  var txn = state.data.transactions.find(function(t){ return t.id===id; });
+  if(!txn) return;
+  txn.date = payload.date || txn.date;
+  txn.account = payload.account || txn.account;
+  txn.type = payload.type || txn.type;
+  txn.toAccount = txn.type==='transfer' ? payload.toAccount : null;
+  txn.category = txn.type==='transfer' ? null : (payload.category || null);
+  txn.amount = Math.abs(parseFloat(payload.amount))||0;
+  txn.currency = payload.currency || txn.currency;
+  txn.description = (payload.description||'').trim();
+  txn.notes = (payload.notes||'').trim();
+  txn.tags = payload.tags || [];
+  txn.updatedAt = nowISO();
+  persistLocal('Edit transaction: '+(txn.description||txn.type));
+}
+function deleteTransaction(id){
+  var txn = state.data.transactions.find(function(t){ return t.id===id; });
+  state.data.transactions = state.data.transactions.filter(function(t){ return t.id!==id; });
+  persistLocal('Delete transaction: '+(txn?(txn.description||txn.type):id));
+}
+
+/* ============================================================
+   RECURRING TRANSACTIONS
+   A recurring rule is a template ("this repeats every 2 weeks
+   starting 1 Aug"). The engine below turns due occurrences into
+   real transactions (tagged with recurringId) so balances, the
+   ledger, reports and exports all just work — no special-casing
+   needed anywhere else in the app.
+   ============================================================ */
+function pad2(n){ return n<10 ? '0'+n : ''+n; }
+function isoFromDate(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function dateFromISO(iso){ return new Date(iso+'T00:00:00'); }
+
+function addDaysISO(iso, n){
+  var d = dateFromISO(iso);
+  d.setDate(d.getDate()+n);
+  return isoFromDate(d);
+}
+// Adds N months to iso, clamping the day to the last valid day of the
+// target month (so "31 Jan" + 1 month lands on 28/29 Feb, not March).
+function addMonthsClampedISO(iso, n){
+  var d = dateFromISO(iso);
+  var day = d.getDate();
+  var target = new Date(d.getFullYear(), d.getMonth()+n, 1);
+  var lastDay = new Date(target.getFullYear(), target.getMonth()+1, 0).getDate();
+  target.setDate(Math.min(day, lastDay));
+  return isoFromDate(target);
+}
+function addYearsClampedISO(iso, n){
+  var d = dateFromISO(iso);
+  var lastDay = new Date(d.getFullYear()+n, d.getMonth()+1, 0).getDate();
+  var target = new Date(d.getFullYear()+n, d.getMonth(), Math.min(d.getDate(), lastDay));
+  return isoFromDate(target);
+}
+function weekdayName(iso){
+  var locale = navigator.language || 'en-US';
+  try{ return new Intl.DateTimeFormat(locale, {weekday:'long'}).format(dateFromISO(iso)); }
+  catch(e){ return dateFromISO(iso).toDateString(); }
+}
+function monthDayLabel(iso){
+  var locale = navigator.language || 'en-US';
+  try{ return new Intl.DateTimeFormat(locale, {day:'numeric', month:'long'}).format(dateFromISO(iso)); }
+  catch(e){ return iso; }
+}
+function ordinal(n){
+  var s = ['th','st','nd','rd'], v = n%100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
+}
+
+// The k-th occurrence (k=0,1,2,...) of a rule, always computed fresh from
+// the anchor (rule.startDate) rather than chained off the previous one —
+// this is what prevents monthly clamping (e.g. day 31) from drifting
+// permanently onto a shorter day after passing through a short month.
+function occurrenceAtStep(rule, k){
+  var n = k * (rule.interval||1);
+  switch(rule.frequency){
+    case 'daily': return addDaysISO(rule.startDate, n);
+    case 'weekly': return addDaysISO(rule.startDate, n*7);
+    case 'yearly': return addYearsClampedISO(rule.startDate, n);
+    case 'monthly': default: return addMonthsClampedISO(rule.startDate, n);
+  }
+}
+
+// First occurrence strictly after rule.lastGeneratedDate (or the anchor
+// itself if nothing has been generated yet), regardless of whether it's
+// already due. Used for "next due" displays and the Upcoming widget.
+function nextOccurrenceOf(rule){
+  if(!rule.lastGeneratedDate) return rule.startDate;
+  var k = 0, guard = 0;
+  while(guard++ < 5000){
+    var occ = occurrenceAtStep(rule, k);
+    if(occ > rule.lastGeneratedDate){
+      if(rule.endDate && occ > rule.endDate) return null;
+      return occ;
+    }
+    k++;
+  }
+  return null;
+}
+
+// All occurrences that are due (<= todayIso) and not yet generated,
+// capped per run so a long-dormant rule can't create thousands of
+// transactions in one go — it just catches up a bit more each sync.
+function dueOccurrences(rule, todayIso, cap){
+  var out = [], k = 0, guard = 0;
+  while(guard++ < 5000 && out.length < cap){
+    var occ = occurrenceAtStep(rule, k);
+    k++;
+    if(rule.lastGeneratedDate && occ <= rule.lastGeneratedDate) continue;
+    if(occ > todayIso) break;
+    if(rule.endDate && occ > rule.endDate) break;
+    out.push(occ);
+  }
+  return out;
+}
+
+function describeRecurrence(rule){
+  var unit = {daily:'day', weekly:'week', monthly:'month', yearly:'year'}[rule.frequency];
+  var every = rule.interval>1 ? ('Every '+rule.interval+' '+unit+'s') : ('Every '+unit).replace('Every day','Daily');
+  var detail = '';
+  if(rule.frequency==='weekly') detail = ' on '+weekdayName(rule.startDate)+'s';
+  else if(rule.frequency==='monthly') detail = ' on the '+ordinal(dateFromISO(rule.startDate).getDate())+(dateFromISO(rule.startDate).getDate()>28?' (or month end)':'');
+  else if(rule.frequency==='yearly') detail = ' on '+monthDayLabel(rule.startDate);
+  var end = rule.endDate ? (' · ends '+formatDate(rule.endDate)) : ' · no end date';
+  return every+detail+end;
+}
+
+function getRecurring(id){ return (state.data.recurring||[]).find(function(r){ return r.id===id; }) || null; }
+function listRecurring(){ return (state.data.recurring||[]).slice(); }
+function recurringTxnCount(id){ return state.data.transactions.filter(function(t){ return t.recurringId===id; }).length; }
+
+function addRecurring(payload, anchorLastGenerated){
+  var rule = {
+    id: uid('rec'),
+    active: true,
+    account: payload.account,
+    toAccount: payload.type==='transfer' ? payload.toAccount : null,
+    type: payload.type,
+    category: payload.type==='transfer' ? null : (payload.category||null),
+    amount: Math.abs(parseFloat(payload.amount))||0,
+    currency: payload.currency || (getAccount(payload.account)||{}).currency || state.data.meta.defaultCurrency,
+    description: (payload.description||'').trim(),
+    notes: (payload.notes||'').trim(),
+    tags: payload.tags || [],
+    frequency: payload.frequency || 'monthly',
+    interval: Math.max(1, parseInt(payload.interval,10)||1),
+    startDate: payload.startDate,
+    endDate: payload.endDate || null,
+    lastGeneratedDate: anchorLastGenerated || null,
+    createdAt: nowISO()
+  };
+  state.data.recurring = state.data.recurring || [];
+  state.data.recurring.push(rule);
+  return rule;
+}
+function updateRecurring(id, payload){
+  var rule = getRecurring(id);
+  if(!rule) return;
+  rule.account = payload.account;
+  rule.toAccount = payload.type==='transfer' ? payload.toAccount : null;
+  rule.type = payload.type;
+  rule.category = payload.type==='transfer' ? null : (payload.category||null);
+  rule.amount = Math.abs(parseFloat(payload.amount))||0;
+  rule.currency = payload.currency || rule.currency;
+  rule.description = (payload.description||'').trim();
+  rule.notes = (payload.notes||'').trim();
+  rule.tags = payload.tags || [];
+  rule.frequency = payload.frequency || rule.frequency;
+  rule.interval = Math.max(1, parseInt(payload.interval,10)||1);
+  rule.startDate = payload.startDate || rule.startDate;
+  rule.endDate = payload.endDate || null;
+  persistLocal('Update recurring “'+(rule.description||rule.type)+'”');
+  runRecurringEngine();
+}
+function setRecurringActive(id, active){
+  var rule = getRecurring(id);
+  if(!rule) return;
+  rule.active = !!active;
+  persistLocal((active?'Resume':'Pause')+' recurring “'+(rule.description||rule.type)+'”');
+  if(active) runRecurringEngine();
+}
+function deleteRecurringRuleOnly(id){
+  var rule = getRecurring(id);
+  if(!rule) return;
+  state.data.recurring = state.data.recurring.filter(function(r){ return r.id!==id; });
+  persistLocal('Delete recurring “'+(rule.description||rule.type)+'” (kept its transactions)');
+}
+function deleteRecurringCascade(id){
+  var rule = getRecurring(id);
+  if(!rule) return;
+  state.data.transactions = state.data.transactions.filter(function(t){ return t.recurringId!==id; });
+  state.data.recurring = state.data.recurring.filter(function(r){ return r.id!==id; });
+  persistLocal('Delete recurring “'+(rule.description||rule.type)+'” and its transactions');
+}
+
+// Materializes every due occurrence of every active rule into real
+// transactions. Safe to call often — it's a no-op when nothing is due.
+// Returns true if it created anything (so callers know whether to persist).
+function runRecurringEngine(){
+  if(!state.data || !Array.isArray(state.data.recurring) || state.data.recurring.length===0) return false;
+  var today = todayISO();
+  var changed = false;
+  state.data.recurring.forEach(function(rule){
+    if(!rule.active) return;
+    if(!getAccount(rule.account)) return; // account was deleted out from under the rule
+    var occ = dueOccurrences(rule, today, 366);
+    if(occ.length===0) return;
+    occ.forEach(function(date){
+      state.data.transactions.push({
+        id: uid('txn'), date: date, account: rule.account, toAccount: rule.toAccount||null,
+        type: rule.type, category: rule.category||null, amount: rule.amount, currency: rule.currency,
+        description: rule.description, notes: rule.notes, tags: (rule.tags||[]).slice(),
+        recurringId: rule.id, createdAt: nowISO(), updatedAt: nowISO()
+      });
+    });
+    rule.lastGeneratedDate = occ[occ.length-1];
+    changed = true;
+  });
+  return changed;
+}
+
+/* ============================================================
+   SYNC ORCHESTRATION
+   ============================================================ */
+function syncTick(){
+  if(!state.settings) return;
+  if(state.settings.storageMode === 'gitea') pushToRemote();
+  else if(state.settings.storageMode === 'local' && state.settings.localMode === 'fsapi') pushToLocalFile();
+  // manual local mode: nothing to push automatically — the user saves via a button.
+}
+var scheduledPush = debounce(syncTick, 1500);
+var retryTimer = null;
+
+function persistLocal(commitMessage){
+  state.data.meta.updatedAt = nowISO();
+  state.dirty = true;
+  state.lastCommitMessage = commitMessage || 'Update cash book';
+  saveCacheData();
+  saveDirtyFlag();
+  setSyncState('unsynced');
+  renderSyncIndicators();
+  render(); // reflect the change immediately in the UI
+  scheduledPush();
+}
+
+function setSyncState(s, err){
+  state.syncState = s;
+  state.lastError = err || null;
+  renderSyncIndicators();
+}
+
+async function pushToRemote(){
+  if(!isConfigured()) return;
+  if(state._pushing) return;
+  if(!state.dirty) return;
+  state._pushing = true;
+  setSyncState('syncing');
+  var payload = JSON.stringify(state.data, null, 2);
+  try{
+    var result = await giteaPutFile(payload, state.sha, state.lastCommitMessage);
+    state.sha = result.sha;
+    state.dirty = false;
+    state.lastSyncedAt = nowISO();
+    saveCacheSha();
+    saveDirtyFlag();
+    setSyncState('synced');
+    clearRetry();
+  }catch(err){
+    if(err instanceof ConflictError){
+      setSyncState('conflict');
+      await handleConflict();
+    } else if(err instanceof GiteaError && err.message==='auth'){
+      setSyncState('error', 'Authentication failed — check your Gitea URL, repo path and token in Settings.');
+      toast('Sync failed: authentication error. Check Settings.', 'error');
+    } else if(err instanceof GiteaError && err.message==='network'){
+      setSyncState('unsynced', 'Network/CORS error — changes saved locally.');
+      scheduleRetry();
+    } else {
+      setSyncState('error', (err && err.message) || 'Unknown sync error');
+      toast('Sync failed — changes are saved locally and will retry.', 'error');
+      scheduleRetry();
+    }
+  }
+  state._pushing = false;
+}
+
+function scheduleRetry(){
+  clearRetry();
+  retryTimer = setTimeout(function(){
+    if(state.dirty) syncTick();
+  }, 20000);
+}
+function clearRetry(){ if(retryTimer){ clearTimeout(retryTimer); retryTimer=null; } }
+
+async function pushToLocalFile(){
+  if(state._pushing) return;
+  if(!state.dirty) return;
+  state._pushing = true;
+  setSyncState('syncing');
+  try{
+    var handle = await getStoredFileHandle();
+    if(!handle) throw new Error('not-connected');
+    var granted = await ensureLocalFilePermission(handle, 'readwrite');
+    if(!granted) throw new Error('permission-denied');
+    await writeLocalFile(handle, state.data);
+    state.dirty = false;
+    state.lastSyncedAt = nowISO();
+    saveDirtyFlag();
+    setSyncState('synced');
+    clearRetry();
+  }catch(err){
+    var msg = localFileErrorMessage(err);
+    setSyncState('error', msg);
+    toast('Could not save to your file — changes stay in the browser. '+msg, 'error');
+    scheduleRetry();
+  }
+  state._pushing = false;
+}
+
+// Reads the connected local file and adopts it as current state.
+async function pullFromLocalFile(silent){
+  setSyncState('syncing');
+  try{
+    var handle = await getStoredFileHandle();
+    if(!handle) throw new Error('not-connected');
+    var granted = await ensureLocalFilePermission(handle, 'readwrite');
+    if(!granted) throw new Error('permission-denied');
+    var text = await readLocalFile(handle);
+    var parsed;
+    try{ parsed = text.trim() ? JSON.parse(text) : defaultData(); }
+    catch(e){ throw new Error('invalid-json'); }
+    state.data = normalizeData(parsed);
+    var generated = runRecurringEngine();
+    state.dirty = generated;
+    saveCacheData(); saveDirtyFlag();
+    state.lastSyncedAt = nowISO();
+    setSyncState(generated ? 'unsynced' : 'synced');
+    if(!silent) toast('Loaded from your local file.', 'ok');
+    render();
+    if(generated) scheduledPush();
+  }catch(err){
+    var msg = localFileErrorMessage(err);
+    setSyncState('error', msg);
+    if(!silent) toast('Could not read your file. '+msg, 'error');
+  }
+}
+
+async function syncNow(){
+  if(!isConfigured()){ toast('Set up a storage location in Settings first.', 'error'); navigate('#/settings'); return; }
+  var mode = state.settings.storageMode;
+  if(mode === 'gitea'){
+    if(state.dirty) await pushToRemote(); else await pullLatest(false);
+  } else if(mode === 'local'){
+    if(state.settings.localMode === 'fsapi'){
+      if(state.dirty) await pushToLocalFile(); else await pullFromLocalFile(false);
+    } else {
+      toast('Manual mode: use "Save to file" or "Load from file" in Settings.', 'error');
+      navigate('#/settings');
+    }
+  }
+}
+
+// Pull the remote file and adopt it as current state (used at startup, manual refresh, or conflict "load theirs").
+async function pullLatest(silent){
+  if(!isConfigured()) return;
+  setSyncState('syncing');
+  try{
+    var res = await giteaGetFile();
+    if(!res.exists){
+      // Nothing on the server yet — seed it with current (or default) local data.
+      var seed = state.data || defaultData();
+      state.data = seed;
+      state.sha = null;
+      saveCacheData();
+      state.dirty = true;
+      saveDirtyFlag();
+      await pushToRemote();
+      return;
+    }
+    var remoteData;
+    try{ remoteData = JSON.parse(res.content); }
+    catch(e){ throw new Error('The remote data file is not valid JSON.'); }
+    state.data = normalizeData(remoteData);
+    state.sha = res.sha;
+    var generated = runRecurringEngine();
+    state.dirty = generated; // newly-generated occurrences need to be pushed back up
+    saveCacheData(); saveCacheSha(); saveDirtyFlag();
+    state.lastSyncedAt = nowISO();
+    setSyncState(generated ? 'unsynced' : 'synced');
+    if(!silent) toast('Synced with Gitea.', 'ok');
+    render();
+    if(generated) scheduledPush();
+  }catch(err){
+    if(err instanceof GiteaError && err.message==='auth'){
+      setSyncState('error', 'Authentication failed — check Settings.');
+      if(!silent) toast('Could not connect: authentication error.', 'error');
+    } else if(err instanceof GiteaError && err.message==='network'){
+      setSyncState('offline', 'Could not reach Gitea (network/CORS).');
+      if(!silent) toast('Could not reach Gitea — check network/CORS. Working from local cache.', 'error');
+    } else {
+      setSyncState('error', (err&&err.message)||'Unknown error');
+      if(!silent) toast('Sync error: '+((err&&err.message)||'unknown'), 'error');
+    }
+  }
+}
+
+async function handleConflict(){
+  try{
+    var res = await giteaGetFile();
+    var remoteData = res.exists ? normalizeData(JSON.parse(res.content)) : defaultData();
+    state.pendingConflict = { remoteData: remoteData, remoteSha: res.sha };
+    openConflictModal();
+  }catch(err){
+    toast('Conflict detected but could not fetch the latest version. Try Sync now again.', 'error');
+  }
+}
+
+function resolveConflictKeepMine(){
+  if(!state.pendingConflict) return;
+  state.sha = state.pendingConflict.remoteSha;
+  state.pendingConflict = null;
+  closeModal();
+  setSyncState('unsynced');
+  pushToRemote();
+}
+function resolveConflictLoadTheirs(){
+  if(!state.pendingConflict) return;
+  state.data = state.pendingConflict.remoteData;
+  state.sha = state.pendingConflict.remoteSha;
+  var generated = runRecurringEngine();
+  state.dirty = generated;
+  state.pendingConflict = null;
+  saveCacheData(); saveCacheSha(); saveDirtyFlag();
+  closeModal();
+  setSyncState(generated ? 'unsynced' : 'synced');
+  toast('Loaded the latest version from Gitea. Your local changes were discarded.', 'ok');
+  render();
+  if(generated) scheduledPush();
+}
+
+// Ensure a loaded JSON blob has the shape we expect (forward-compat / resilience).
+function normalizeData(d){
+  d = d || {};
+  d.meta = d.meta || {};
+  d.meta.schemaVersion = d.meta.schemaVersion || 1;
+  d.meta.defaultCurrency = d.meta.defaultCurrency || 'EUR';
+  d.accounts = Array.isArray(d.accounts) ? d.accounts : [];
+  d.categories = Array.isArray(d.categories) ? d.categories : [];
+  d.transactions = Array.isArray(d.transactions) ? d.transactions : [];
+  d.recurring = Array.isArray(d.recurring) ? d.recurring : [];
+  d.accounts.forEach(function(a){
+    if(typeof a.archived!=='boolean') a.archived=false;
+    if(!a.color) a.color=ACCOUNT_COLORS[0];
+    a.startingBalance = numOr0(a.startingBalance);
+  });
+  d.transactions.forEach(function(t){ t.amount = numOr0(t.amount); });
+  d.recurring.forEach(function(r){
+    if(typeof r.active!=='boolean') r.active=true;
+    r.amount = numOr0(r.amount);
+    r.interval = Math.max(1, parseInt(r.interval,10)||1);
+    if(['daily','weekly','monthly','yearly'].indexOf(r.frequency)===-1) r.frequency='monthly';
+    if(!Array.isArray(r.tags)) r.tags=[];
+  });
+  return d;
+}
+
+/* ============================================================
+   STARTUP
+   ============================================================ */
+async function initData(){
+  var cache = loadCache();
+  if(cache.data){
+    state.data = normalizeData(cache.data);
+    state.sha = cache.sha;
+    state.dirty = cache.dirty;
+  } else {
+    state.data = defaultData();
+  }
+
+  if(runRecurringEngine()){
+    saveCacheData();
+    state.dirty = true;
+    saveDirtyFlag();
+  }
+  startRecurringWatcher();
+
+  if(!isConfigured()){
+    render();
+    return;
+  }
+
+  render(); // show cached/local data immediately while we sync
+
+  var mode = state.settings.storageMode;
+  if(mode === 'gitea'){
+    if(state.dirty){
+      // We have unsynced local edits from a previous session — try to push them first.
+      setSyncState('unsynced');
+      await pushToRemote();
+    } else {
+      await pullLatest(true);
+    }
+  } else if(mode === 'local'){
+    if(state.settings.localMode === 'fsapi'){
+      var handle = await getStoredFileHandle();
+      if(!handle){
+        setSyncState('error', 'No file connected — reconnect it in Settings.');
+        return;
+      }
+      var granted = await ensureLocalFilePermission(handle, 'readwrite');
+      if(!granted){
+        setSyncState('error', 'Permission to your file was not granted — reconnect it in Settings.');
+        return;
+      }
+      if(state.dirty) await pushToLocalFile();
+      else await pullFromLocalFile(true);
+    } else {
+      // Manual mode: the local cache loaded above already IS the working state.
+      setSyncState(state.dirty ? 'unsynced' : 'synced');
+    }
+  }
+}
+
+// If the app is left open across midnight (or a rule's due date), catch up
+// on any newly-due recurring transactions without requiring a reload.
+var _recurringWatcherLastDay = todayISO();
+var _recurringWatcherStarted = false;
+function startRecurringWatcher(){
+  if(_recurringWatcherStarted) return;
+  _recurringWatcherStarted = true;
+  setInterval(function(){
+    var today = todayISO();
+    if(today !== _recurringWatcherLastDay){
+      _recurringWatcherLastDay = today;
+      if(runRecurringEngine()) persistLocal('Generate recurring transactions');
+    }
+  }, 5 * 60 * 1000);
+}
+
+window.addEventListener('online', function(){
+  if(!state.dirty || !state.settings) return;
+  syncTick();
+});
+
+
+/* ============================================================
+   ICONS (small inline SVG set, feather-style, currentColor)
+   ============================================================ */
+var ICONS = {
+  home:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9a1 1 0 0 0 1 1H9a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h2.5a1 1 0 0 0 1-1v-9"/></svg>',
+  list:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+  chart:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V10M11 19V4M18 19v-7"/><path d="M3 19h18"/></svg>',
+  gear:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.5-2-3.4-2.3.7a7.6 7.6 0 0 0-1.8-1L14.8 3h-3.6l-.5 2.3a7.6 7.6 0 0 0-1.8 1l-2.3-.7-2 3.4L6.6 11a7.6 7.6 0 0 0 0 2l-2 1.5 2 3.4 2.3-.7a7.6 7.6 0 0 0 1.8 1l.5 2.3h3.6l.5-2.3a7.6 7.6 0 0 0 1.8-1l2.3.7 2-3.4-2-1.5Z"/></svg>',
+  plus:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  edit:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  trash:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4h6v3M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg>',
+  x:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  refresh:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>',
+  download:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="m7 11 5 5 5-5"/><path d="M5 21h14"/></svg>',
+  swap:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m17 3 4 4-4 4"/><path d="M3 7h18"/><path d="m7 21-4-4 4-4"/><path d="M21 17H3"/></svg>',
+  wallet:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v3"/><path d="M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-4"/><path d="M17 13.5h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-3a2 2 0 0 0 0 4Z"/></svg>',
+  check:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>',
+  alert:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+  moon:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>',
+  sun:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg>',
+  menu:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
+  archive:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4" width="17" height="4.5" rx="1"/><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5"/><path d="M10 13h4"/></svg>',
+  coffee:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>',
+  github:'<svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.237 1.838 1.237 1.07 1.834 2.809 1.304 3.495.997.108-.775.42-1.305.763-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.5 11.5 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.61-2.807 5.625-5.479 5.921.43.372.823 1.102.823 2.222 0 1.606-.014 2.898-.014 3.293 0 .321.216.694.825.576C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>',
+  repeat:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
+  pause:'<svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>',
+  play:'<svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7 4.3c0-.9 1-1.5 1.8-1l11 7.7a1.2 1.2 0 0 1 0 2l-11 7.7c-.8.5-1.8-.1-1.8-1Z"/></svg>',
+  eye:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3.2"/></svg>',
+  eyeoff:'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.2A10.6 10.6 0 0 1 12 5c7 0 10.5 7 10.5 7a13.4 13.4 0 0 1-3.15 4.05M6.5 6.6C3.5 8.4 1.5 12 1.5 12s3.5 7 10.5 7a10.4 10.4 0 0 0 4.2-.87"/><path d="M9.9 9.9a3.2 3.2 0 0 0 4.24 4.24"/></svg>'
+};
+function icon(name){ return ICONS[name] || ''; }
+
+/* ============================================================
+   TOASTS
+   ============================================================ */
+function toast(msg, kind){
+  var root = qs('#toast-root');
+  var el = document.createElement('div');
+  el.className = 'toast' + (kind==='error' ? ' error' : '');
+  el.innerHTML = (kind==='error' ? icon('alert') : icon('check')) + '<span>'+escapeHtml(msg)+'</span>';
+  root.appendChild(el);
+  setTimeout(function(){
+    el.style.transition='opacity .25s ease';
+    el.style.opacity='0';
+    setTimeout(function(){ el.remove(); }, 260);
+  }, 3200);
+}
+
+/* ============================================================
+   MODAL HELPERS
+   ============================================================ */
+function openModal(html){
+  closeModal();
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay';
+  overlay.innerHTML = '<div class="modal" role="dialog" aria-modal="true">'+html+'</div>';
+  overlay.addEventListener('mousedown', function(e){ if(e.target===overlay) closeModal(); });
+  document.body.appendChild(overlay);
+  document.addEventListener('keydown', escCloseModal);
+}
+function escCloseModal(e){ if(e.key==='Escape') closeModal(); }
+function closeModal(){
+  var overlay = qs('#modal-overlay');
+  if(overlay) overlay.remove();
+  document.removeEventListener('keydown', escCloseModal);
+}
+
+/* ============================================================
+   ROUTER
+   ============================================================ */
+function parseHash(){
+  var h = location.hash.replace(/^#\/?/, '');
+  var parts = h.split('/').filter(Boolean);
+  if(parts.length===0) return {name:'dashboard', params:{}};
+  if(parts[0]==='account' && parts[1]) return {name:'account', params:{id:parts[1]}};
+  if(['dashboard','transactions','reports','settings'].indexOf(parts[0])>-1) return {name:parts[0], params:{}};
+  return {name:'dashboard', params:{}};
+}
+function navigate(hash){
+  if(location.hash === hash){ state.route = parseHash(); render(); }
+  else location.hash = hash;
+}
+window.addEventListener('hashchange', function(){ state.route = parseHash(); render(); });
+
+/* ============================================================
+   SHELL / MASTER RENDER
+   ============================================================ */
+var NAV_ITEMS = [
+  {route:'dashboard', label:'Dashboard', icon:'home'},
+  {route:'transactions', label:'Transactions', icon:'list'},
+  {route:'reports', label:'Reports', icon:'chart'},
+  {route:'settings', label:'Settings', icon:'gear'}
+];
+
+function render(){
+  applyTheme(state.theme);
+  if(!isConfigured()){
+    renderOnboarding();
+    return;
+  }
+  if(!state.data){ state.data = defaultData(); }
+
+  var app = qs('#app');
+  var routeName = state.route.name;
+  var title = routeName==='account' ? ((getAccount(state.route.params.id)||{}).name || 'Account') : NAV_ITEMS.find(function(n){return n.route===routeName;}).label;
+
+  app.innerHTML =
+    '<div class="shell">'+
+      renderSidebar(routeName)+
+      '<div class="main">'+
+        renderTopbar(title)+
+        '<div class="view" id="view-root"></div>'+
+        renderBottomNav(routeName)+
+        '<button class="privacy-fab'+(state.privacyMode?' active':'')+'" title="'+(state.privacyMode?'Show amounts':'Hide amounts')+'" aria-pressed="'+(state.privacyMode?'true':'false')+'" onclick="Ledger.togglePrivacyMode()">'+icon(state.privacyMode?'eyeoff':'eye')+'</button>'+
+        (routeName!=='settings' ? '<button class="fab" title="Add transaction" onclick="Ledger.openTxnModal()">'+icon('plus')+'</button>' : '')+
+      '</div>'+
+    '</div>';
+
+  var viewRoot = qs('#view-root');
+  if(routeName==='dashboard') renderDashboard(viewRoot);
+  else if(routeName==='account') renderAccountView(viewRoot, state.route.params.id);
+  else if(routeName==='transactions') renderTransactionsView(viewRoot);
+  else if(routeName==='reports') renderReportsView(viewRoot);
+  else if(routeName==='settings') renderSettingsView(viewRoot);
+}
+
+function renderSidebar(routeName){
+  return '<nav class="sidebar" aria-label="Main">'+
+    '<div class="brand"><div class="brand-mark">€</div><div><div class="brand-name">Ledger</div><div class="brand-sub">Cash Book</div></div></div>'+
+    '<div class="nav-list">'+
+      NAV_ITEMS.map(function(n){
+        return '<a href="#/'+n.route+'" class="nav-tab'+(routeName===n.route?' active':'')+'">'+icon(n.icon)+'<span>'+n.label+'</span></a>';
+      }).join('')+
+    '</div>'+
+    '<div class="sidebar-foot">'+
+      '<button class="sidebar-toggle btn ghost sm" style="width:100%;justify-content:flex-start;" onclick="Ledger.togglePrivacyMode()">'+icon(state.privacyMode?'eyeoff':'eye')+'<span style="margin-left:6px;">'+(state.privacyMode?'Show amounts':'Hide amounts')+'</span></button>'+
+      renderSyncPill()+
+      '<button class="sidebar-toggle btn ghost sm" style="width:100%;justify-content:flex-start;" onclick="Ledger.toggleTheme()">'+icon(state.theme==='dark'?'sun':'moon')+'<span style="margin-left:6px;">'+(state.theme==='dark'?'Light mode':'Dark mode')+'</span></button>'+
+      '<div class="credits-row">'+
+        '<a class="btn icon-only sm" href="'+escapeHtml(BUY_ME_A_COFFEE_URL)+'" target="_blank" rel="noopener" title="Buy me a coffee">'+icon('coffee')+'</a>'+
+        '<a class="btn icon-only sm" href="'+escapeHtml(GITHUB_URL)+'" target="_blank" rel="noopener" title="GitHub">'+icon('github')+'</a>'+
+        '<span class="credits-text">credits: '+escapeHtml(CREDITS_NAME)+'</span>'+
+      '</div>'+
+    '</div>'+
+  '</nav>';
+}
+
+function renderTopbar(title){
+  return '<div class="topbar">'+
+    '<span class="topbar-title">'+escapeHtml(title)+'</span>'+
+    renderSyncPill(true)+
+  '</div>';
+}
+
+function renderBottomNav(routeName){
+  return '<nav class="bottom-nav" aria-label="Main">'+
+    NAV_ITEMS.map(function(n){
+      return '<button class="'+(routeName===n.route?'active':'')+'" onclick="Ledger.nav(\'#/'+n.route+'\')">'+icon(n.icon)+'<span>'+n.label+'</span></button>';
+    }).join('')+
+  '</nav>';
+}
+
+function renderSyncPill(compact){
+  var s = state.syncState;
+  var label = {
+    idle:'Not synced yet', syncing:'Syncing…', synced:'Synced', unsynced:'Unsynced changes',
+    error:'Sync error', conflict:'Conflict', offline:'Offline'
+  }[s] || s;
+  if(compact){
+    return '<button class="sync-pill" data-state="'+s+'" title="'+escapeHtml(label)+'" onclick="Ledger.syncNow()"><span class="sync-dot"></span></button>';
+  }
+  return '<button class="sync-pill" data-state="'+s+'" onclick="Ledger.syncNow()"><span class="sync-dot"></span><span>'+escapeHtml(label)+'</span></button>';
+}
+
+function renderSyncIndicators(){
+  qsa('.sync-pill').forEach(function(el){
+    var s = state.syncState;
+    var label = {
+      idle:'Not synced yet', syncing:'Syncing…', synced:'Synced', unsynced:'Unsynced changes',
+      error:'Sync error', conflict:'Conflict', offline:'Offline'
+    }[s] || s;
+    el.setAttribute('data-state', s);
+    el.title = label;
+    var span = el.querySelector('span:last-child');
+    if(span && span !== el.querySelector('.sync-dot')) span.textContent = label;
+  });
+}
+
+
+/* ============================================================
+   ONBOARDING (first run — no valid settings yet)
+   ============================================================ */
+function renderOnboarding(){
+  document.documentElement.setAttribute('data-theme', state.theme);
+  var app = qs('#app');
+  var step = state._onboardStep || (state.settings && state.settings.storageMode) || null;
+  if(step === 'gitea') app.innerHTML = onboardGiteaHtml();
+  else if(step === 'local') app.innerHTML = onboardLocalHtml();
+  else app.innerHTML = onboardModePickerHtml();
+}
+
+function onboardShellOpen(title, lead){
+  return '<div class="onboard-wrap"><div class="onboard-card">'+
+    '<div class="brand"><div class="brand-mark">€</div><div><div class="brand-name">Ledger</div><div class="brand-sub">Cash Book</div></div></div>'+
+    '<h1>'+title+'</h1>'+ (lead ? '<p class="lead">'+lead+'</p>' : '');
+}
+function onboardShellClose(){ return '</div></div>'; }
+
+function onboardModePickerHtml(){
+  return onboardShellOpen('Where should your data live?', 'Pick how your cash book is stored. You can change this later in Settings.') +
+    '<div style="display:flex;flex-direction:column;gap:10px;">'+
+      '<button class="storage-pick-card" onclick="Ledger.chooseOnboardMode(\'gitea\')">'+
+        '<div class="storage-pick-icon">☁️</div>'+
+        '<div><div class="storage-pick-title">Gitea repository</div><div class="storage-pick-sub">Syncs automatically across every device you use.</div></div>'+
+      '</button>'+
+      '<button class="storage-pick-card" onclick="Ledger.chooseOnboardMode(\'local\')">'+
+        '<div class="storage-pick-icon">💾</div>'+
+        '<div><div class="storage-pick-title">Local file</div><div class="storage-pick-sub">Stays on this device only. No server involved.</div></div>'+
+      '</button>'+
+    '</div>'+
+  onboardShellClose();
+}
+
+function chooseOnboardMode(mode){
+  state._onboardStep = mode;
+  render();
+}
+function onboardBackToPicker(){
+  state._onboardStep = null;
+  render();
+}
+
+function giteaPrivacyWarningHtml(){
+  return '<div class="cors-note" style="margin-bottom:14px;">'+icon('alert')+' <strong>Privacy note:</strong> this connects to whatever Gitea server you point it at, and whoever runs that server can read your financial data. For anything sensitive, only use a Gitea instance you fully control — for example, one self-hosted on your home network or a NAS. Avoid pointing this at someone else\'s hosted Gitea service: once your data has been written (and maybe backed up) on a server you don\'t control, fully deleting it again can be a real pain.</div>';
+}
+
+function onboardGiteaHtml(){
+  var s = (state.settings && state.settings.storageMode==='gitea') ? state.settings : {};
+  return onboardShellOpen('Connect a Gitea repository', 'Your cash book is stored as one JSON file in a Gitea repository you control, so it syncs across every device.') +
+    giteaPrivacyWarningHtml() +
+    '<div id="onboard-status"></div>'+
+    giteaFormHtml(s)+
+    '<div class="btn-row" style="margin-top:6px;">'+
+      '<button class="btn ghost sm" onclick="Ledger.onboardBackToPicker()">← Back</button>'+
+      '<button class="btn ghost sm" onclick="Ledger.testGiteaForm(\'onboard\')">Test connection</button>'+
+      '<button class="btn primary" style="flex:1;" onclick="Ledger.saveGiteaForm(\'onboard\')">Connect &amp; load</button>'+
+    '</div>'+
+    '<div class="cors-note">'+icon('alert')+' <strong>If the test fails with a network error:</strong> your Gitea instance likely needs CORS enabled for browser requests. In <code>app.ini</code> add an <code>[cors]</code> section with <code>ENABLED = true</code> and <code>ALLOW_DOMAIN = *</code> (or your app\'s origin), then restart Gitea. See Settings → Storage for more.</div>'+
+  onboardShellClose();
+}
+
+function onboardLocalHtml(){
+  var supported = localFileApiSupported();
+  return onboardShellOpen('Store your data locally', 'Your cash book is saved as one JSON file. Nothing leaves this device.') +
+    '<div id="onboard-local-status"></div>'+
+    (supported ? onboardLocalSupportedBodyHtml() : onboardLocalManualBodyHtml()) +
+    '<div class="btn-row" style="margin-top:14px;"><button class="btn ghost sm" onclick="Ledger.onboardBackToPicker()">← Back</button></div>'+
+  onboardShellClose();
+}
+
+function onboardLocalSupportedBodyHtml(){
+  return (
+    '<div class="btn-row" style="flex-direction:column;">'+
+      '<button class="btn primary" style="width:100%;" onclick="Ledger.onboardCreateLocalFile()">'+icon('plus')+' Create a new file</button>'+
+      '<button class="btn" style="width:100%;" onclick="Ledger.onboardOpenLocalFile()">Open an existing cashbook.json</button>'+
+    '</div>'+
+    '<p class="hint" style="margin-top:12px;">Your browser will ask you where to put it — a webpage can\'t silently write into a folder on its own. Pick wherever you\'d like the file to live, for example the same folder as this HTML file.</p>'
+  );
+}
+function onboardLocalManualBodyHtml(){
+  return (
+    '<p class="warn">'+icon('alert')+' This browser doesn\'t support direct file access (that needs Chrome, Edge, or another Chromium-based browser). You can still store data locally, just with a couple of manual clicks.</p>'+
+    '<div class="field"><label>Load an existing file</label><input type="file" accept="application/json,.json" onchange="Ledger.onboardManualLoad(this)"></div>'+
+    '<div class="btn-row"><button class="btn primary" onclick="Ledger.onboardStartManualFresh()">Start with an empty cash book</button></div>'+
+    '<p class="hint" style="margin-top:10px;">Use "Save to file" in Settings whenever you want to write your changes to disk, and "Load from file" to bring them back on your next visit.</p>'
+  );
+}
+
+// Shared finish-up for any local-mode onboarding path: adopt the given data,
+// run the recurring engine once, cache it, and start the watcher.
+function finishOnboardingWithData(dataObj){
+  state.data = normalizeData(dataObj);
+  var generated = runRecurringEngine();
+  saveCacheData();
+  startRecurringWatcher();
+  return generated;
+}
+
+async function onboardCreateLocalFile(){
+  var statusEl = qs('#onboard-local-status');
+  try{
+    var handle = await createNewLocalFile('cashbook.json');
+    await writeLocalFile(handle, defaultData());
+    saveSettings({ storageMode:'local', localMode:'fsapi', localFileName: handle.name });
+    var generated = finishOnboardingWithData(defaultData());
+    state.dirty = generated; saveDirtyFlag();
+    setSyncState(generated ? 'unsynced' : 'synced');
+    toast('Created '+handle.name+'.', 'ok');
+    render();
+    if(generated) scheduledPush();
+  }catch(err){
+    if(err && err.name==='AbortError') return;
+    if(statusEl) statusEl.innerHTML = '<div class="conn-status bad">'+icon('alert')+' Could not create the file: '+escapeHtml((err&&err.message)||'unknown error')+'</div>';
+  }
+}
+
+async function onboardOpenLocalFile(){
+  var statusEl = qs('#onboard-local-status');
+  try{
+    var handle = await pickExistingLocalFile();
+    var text = await readLocalFile(handle);
+    var parsed = text.trim() ? JSON.parse(text) : defaultData();
+    saveSettings({ storageMode:'local', localMode:'fsapi', localFileName: handle.name });
+    var generated = finishOnboardingWithData(parsed);
+    state.dirty = generated; saveDirtyFlag();
+    setSyncState(generated ? 'unsynced' : 'synced');
+    toast('Connected '+handle.name+'.', 'ok');
+    render();
+    if(generated) scheduledPush();
+  }catch(err){
+    if(err && err.name==='AbortError') return;
+    if(statusEl) statusEl.innerHTML = '<div class="conn-status bad">'+icon('alert')+' Could not open that file: '+escapeHtml((err&&err.message)||'not valid JSON')+'</div>';
+  }
+}
+
+function onboardManualLoad(inputEl){
+  var file = inputEl.files && inputEl.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    try{
+      var parsed = JSON.parse(reader.result);
+      saveSettings({ storageMode:'local', localMode:'manual', localFileName: file.name });
+      var generated = finishOnboardingWithData(parsed);
+      state.dirty = generated; saveDirtyFlag();
+      setSyncState(generated ? 'unsynced' : 'synced');
+      toast('Loaded '+file.name+'.', 'ok');
+      render();
+    }catch(e){ toast('That file is not valid JSON.', 'error'); }
+  };
+  reader.readAsText(file);
+}
+
+function onboardStartManualFresh(){
+  saveSettings({ storageMode:'local', localMode:'manual', localFileName:'cashbook.json' });
+  finishOnboardingWithData(defaultData());
+  state.dirty = true; saveDirtyFlag();
+  setSyncState('unsynced');
+  toast('Started a new cash book. Use "Save to file" in Settings to keep a copy.', 'ok');
+  render();
+}
+
+function giteaFormHtml(s){
+  s = s || {};
+  return (
+    '<div class="field"><label for="f-url">Gitea instance URL</label>'+
+    '<input type="url" id="f-url" placeholder="https://git.example.com" value="'+escapeHtml(s.url||'')+'">'+
+    '<span class="hint">No trailing slash needed.</span></div>'+
+    '<div class="field-row">'+
+      '<div class="field"><label for="f-owner">Repo owner</label><input type="text" id="f-owner" placeholder="yourname" value="'+escapeHtml(s.owner||'')+'"></div>'+
+      '<div class="field"><label for="f-repo">Repo name</label><input type="text" id="f-repo" placeholder="finance" value="'+escapeHtml(s.repo||'')+'"></div>'+
+    '</div>'+
+    '<div class="field-row">'+
+      '<div class="field"><label for="f-branch">Branch</label><input type="text" id="f-branch" placeholder="main" value="'+escapeHtml(s.branch||'main')+'"></div>'+
+      '<div class="field"><label for="f-path">Data file path</label><input type="text" id="f-path" placeholder="data/cashbook.json" value="'+escapeHtml(s.path||'data/cashbook.json')+'"></div>'+
+    '</div>'+
+    '<div class="field"><label for="f-token">Personal Access Token</label>'+
+    '<input type="password" id="f-token" placeholder="repo-scoped token" value="'+escapeHtml(s.token||'')+'">'+
+    '<span class="hint">Needs read + write (repo) scope. Stored only in this browser\'s local storage.</span></div>'
+  );
+}
+
+function readGiteaForm(){
+  return {
+    storageMode: 'gitea',
+    url: qs('#f-url').value.trim(),
+    owner: qs('#f-owner').value.trim(),
+    repo: qs('#f-repo').value.trim(),
+    branch: qs('#f-branch').value.trim() || 'main',
+    path: qs('#f-path').value.trim() || 'data/cashbook.json',
+    token: qs('#f-token').value.trim()
+  };
+}
+
+async function testGiteaForm(context){
+  var s = readGiteaForm();
+  if(!s.url || !s.owner || !s.repo || !s.token){ toast('Fill in URL, owner, repo and token first.', 'error'); return; }
+  var statusEl = context==='onboard' ? qs('#onboard-status') : qs('#settings-conn-status');
+  if(statusEl) statusEl.innerHTML = '<div class="conn-status" style="background:var(--bg-sunken);color:var(--ink-soft);">'+ '<div class="spinner"></div> Testing…</div>';
+  var result = await giteaTestConnection(s);
+  if(!statusEl) return;
+  if(result.ok){
+    statusEl.innerHTML = '<div class="conn-status ok">'+icon('check')+(result.fileExists ? ' Connected — data file found.' : ' Connected — data file will be created on first save.')+'</div>';
+  } else if(result.reason==='network'){
+    statusEl.innerHTML = '<div class="conn-status bad">'+icon('alert')+' Network/CORS error — see the note below.</div>';
+  } else if(result.reason==='auth'){
+    statusEl.innerHTML = '<div class="conn-status bad">'+icon('alert')+' Authentication failed — check owner/repo/token.</div>';
+  } else {
+    statusEl.innerHTML = '<div class="conn-status bad">'+icon('alert')+' Could not connect (HTTP '+(result.status||'?')+').</div>';
+  }
+}
+
+async function saveGiteaForm(context){
+  var s = readGiteaForm();
+  if(!s.url || !s.owner || !s.repo || !s.token){ toast('Fill in URL, owner, repo and token first.', 'error'); return; }
+  saveSettings(s);
+  toast('Connected. Loading your data…', 'ok');
+  await initData();
+  if(context==='onboard') render();
+}
+
+/* ============================================================
+   SETTINGS VIEW (full app)
+   ============================================================ */
+function renderSettingsView(root){
+  var s = state.settings || {};
+  var d = state.data;
+  var activeTab = state._settingsStorageTab || s.storageMode || 'gitea';
+  root.innerHTML =
+    '<div class="view-head"><div><h1>Settings</h1><div class="sub">Storage, accounts, categories and preferences</div></div></div>'+
+
+    '<div class="settings-section"><h2>Storage</h2><div class="sub">Where your cash book data lives.</div>'+
+      '<div class="type-toggle" id="storage-mode-toggle" style="max-width:320px;margin-bottom:14px;">'+
+        '<button type="button" data-mode="gitea" class="'+(activeTab==='gitea'?'active':'')+'" onclick="Ledger.switchSettingsStorageTab(\'gitea\')">Gitea'+(s.storageMode==='gitea'?' ✓':'')+'</button>'+
+        '<button type="button" data-mode="local" class="'+(activeTab==='local'?'active':'')+'" onclick="Ledger.switchSettingsStorageTab(\'local\')">Local file'+(s.storageMode==='local'?' ✓':'')+'</button>'+
+      '</div>'+
+      '<div id="storage-mode-body">'+ renderStorageModeBody(activeTab) +'</div>'+
+      (s.storageMode ? '<div class="btn-row" style="margin-top:14px;"><button class="btn danger sm" onclick="Ledger.disconnectStorage()">Disconnect storage</button></div>' : '')+
+    '</div>'+
+
+    '<div class="settings-section"><h2>Preferences</h2>'+
+      '<div class="field-row">'+
+        '<div class="field"><label for="f-default-currency">Default currency</label>'+
+        '<select id="f-default-currency" onchange="Ledger.setDefaultCurrency(this.value)">'+
+          CURRENCIES.map(function(c){ return '<option value="'+c+'"'+(c===d.meta.defaultCurrency?' selected':'')+'>'+c+'</option>'; }).join('')+
+        '</select></div>'+
+        '<div class="field"><label>Appearance</label>'+
+        '<button class="btn" style="width:100%;justify-content:flex-start;" onclick="Ledger.toggleTheme()">'+icon(state.theme==='dark'?'sun':'moon')+' '+(state.theme==='dark'?'Switch to light mode':'Switch to dark mode')+'</button></div>'+
+      '</div>'+
+      '<div class="field-row" style="margin-top:12px;">'+
+        '<div class="field"><label>Privacy</label>'+
+        '<button class="btn" style="width:100%;justify-content:flex-start;" onclick="Ledger.togglePrivacyMode()">'+icon(state.privacyMode?'eyeoff':'eye')+' '+(state.privacyMode?'Show amounts':'Hide amounts')+'</button></div>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="settings-section"><h2>Accounts</h2><div class="sub">Add, rename, archive or remove your accounts.</div>'+
+      '<div class="manage-list" id="accounts-manage-list">'+ renderAccountsManageList() +'</div>'+
+      '<div style="margin-top:10px;"><button class="btn sm" onclick="Ledger.openAccountModal()">'+icon('plus')+' Add account</button></div>'+
+    '</div>'+
+
+    '<div class="settings-section"><h2>Categories</h2><div class="sub">Used to tag income and expenses.</div>'+
+      '<div class="manage-list" id="categories-manage-list">'+ renderCategoriesManageList() +'</div>'+
+      '<div style="margin-top:10px;"><button class="btn sm" onclick="Ledger.openCategoryModal()">'+icon('plus')+' Add category</button></div>'+
+    '</div>'+
+
+    '<div class="settings-section"><h2>Recurring transactions</h2><div class="sub">Bills, subscriptions, salary — anything on a schedule.</div>'+
+      '<div class="manage-list" id="recurring-manage-list">'+ renderRecurringManageList() +'</div>'+
+      '<div style="margin-top:10px;"><button class="btn sm" onclick="Ledger.openRecurringModal()">'+icon('plus')+' Add recurring transaction</button></div>'+
+    '</div>'+
+
+    '<div class="settings-section"><h2>Data</h2>'+
+      '<div class="btn-row" style="margin-top:10px;">'+
+        '<button class="btn sm" onclick="Ledger.exportAllCSV()">'+icon('download')+' Export all transactions (CSV)</button>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="settings-section"><h2>Credits</h2>'+
+      '<div class="btn-row">'+
+        '<a class="btn sm" href="'+escapeHtml(BUY_ME_A_COFFEE_URL)+'" target="_blank" rel="noopener">'+icon('coffee')+' Buy me a coffee</a>'+
+        '<a class="btn sm" href="'+escapeHtml(GITHUB_URL)+'" target="_blank" rel="noopener">'+icon('github')+' GitHub</a>'+
+      '</div>'+
+      '<div class="sub" style="margin-top:10px;">credits: '+escapeHtml(CREDITS_NAME)+'</div>'+
+    '</div>';
+}
+
+function switchSettingsStorageTab(mode){
+  state._settingsStorageTab = mode;
+  render();
+}
+
+function renderStorageModeBody(mode){
+  return mode === 'local' ? renderLocalSettingsBody() : renderGiteaSettingsBody();
+}
+
+function renderGiteaSettingsBody(){
+  var s = state.settings || {};
+  var isActive = s.storageMode === 'gitea';
+  return giteaPrivacyWarningHtml() +
+    (isActive ? '<div class="sub" style="margin-bottom:10px;">Currently at <code>'+escapeHtml((s.owner||'')+'/'+(s.repo||''))+'</code>, branch <code>'+escapeHtml(s.branch||'main')+'</code>, file <code>'+escapeHtml(s.path||'')+'</code>.</div>' : '')+
+    '<div id="settings-conn-status"></div>'+
+    giteaFormHtml(isActive ? s : {})+
+    '<div class="btn-row">'+
+      '<button class="btn ghost sm" onclick="Ledger.testGiteaForm(\'settings\')">Test connection</button>'+
+      '<button class="btn primary sm" onclick="Ledger.saveGiteaForm(\'settings\')">'+(isActive?'Save connection':'Use Gitea')+'</button>'+
+      (isActive ? '<button class="btn sm" onclick="Ledger.syncNow()">'+icon('refresh')+' Sync now</button>' : '')+
+    '</div>'+
+    '<div class="cors-note">'+icon('alert')+' <strong>Seeing network errors?</strong> Your browser blocks cross-origin requests unless your Gitea instance allows them. On the server, enable CORS in <code>app.ini</code>: <code>[cors]</code> section with <code>ENABLED = true</code> and <code>ALLOW_DOMAIN = *</code> (or this app\'s exact origin), then restart Gitea. Reverse proxies (nginx, Caddy) must not strip those headers.</div>';
+}
+
+function renderLocalSettingsBody(){
+  var s = state.settings || {};
+  var isActive = s.storageMode === 'local';
+  var supported = localFileApiSupported();
+  var html = '';
+  if(isActive){
+    html += '<div class="conn-status ok">'+icon('check')+' Connected: <strong>'+escapeHtml(s.localFileName||'cashbook.json')+'</strong>'+(s.localMode==='manual'?' — manual mode':'')+'</div>';
+  }
+  if(supported){
+    html += '<div class="btn-row">'+
+        '<button class="btn sm" onclick="Ledger.settingsCreateLocalFile()">'+icon('plus')+' Create new file</button>'+
+        '<button class="btn sm" onclick="Ledger.settingsOpenLocalFile()">Choose existing file</button>'+
+        (isActive && s.localMode==='fsapi' ? '<button class="btn sm" onclick="Ledger.syncNow()">'+icon('refresh')+' Save now</button>' : '')+
+      '</div>'+
+      '<p class="hint" style="margin-top:8px;">Your browser controls where the picker opens — a webpage can\'t write into a folder without you choosing it there yourself.</p>';
+  } else {
+    html += '<p class="warn">'+icon('alert')+' This browser doesn\'t support direct file access (Chrome, Edge, and other Chromium browsers do). Use manual save and load instead.</p>';
+  }
+  html += '<div class="field" style="margin-top:10px;"><label>Load from a file</label><input type="file" accept="application/json,.json" onchange="Ledger.settingsManualLoad(this)"></div>'+
+    '<div class="btn-row"><button class="btn sm" onclick="Ledger.manualSaveLocalFile()">'+icon('download')+' Save to file (download)</button></div>'+
+    '<p class="hint" style="margin-top:10px;">Tip: if the file lives in a NAS-mounted or synced folder (Syncthing, Dropbox…), other devices can share it too — just point each device at the same file.</p>';
+  return html;
+}
+
+function renderAccountsManageList(){
+  var accs = state.data.accounts.slice().sort(function(a,b){ return (a.archived?1:0)-(b.archived?1:0); });
+  if(accs.length===0) return '<div class="empty-state" style="padding:20px;"><p>No accounts yet. Add your first one below.</p></div>';
+  return accs.map(function(a){
+    var bal = accountBalance(a.id);
+    return '<div class="manage-row">'+
+      '<span class="dot" style="background:'+a.color+';"></span>'+
+      '<div style="flex:1;min-width:0;">'+
+        '<div class="name">'+escapeHtml(a.name)+' '+(a.archived?'<span class="archived-badge">Archived</span>':'')+'</div>'+
+        '<div class="sub2">'+escapeHtml(a.type)+' · '+a.currency+' · '+formatMoney(bal, a.currency)+'</div>'+
+      '</div>'+
+      '<div class="actions">'+
+        '<button class="btn icon-only sm" title="Edit" onclick="Ledger.openAccountModal(\''+a.id+'\')">'+icon('edit')+'</button>'+
+        '<button class="btn icon-only sm" title="'+(a.archived?'Unarchive':'Archive')+'" onclick="Ledger.toggleArchiveAccount(\''+a.id+'\')">'+icon('archive')+'</button>'+
+        '<button class="btn icon-only sm danger" title="Delete" onclick="Ledger.confirmDeleteAccount(\''+a.id+'\')">'+icon('trash')+'</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function renderCategoriesManageList(){
+  var cats = state.data.categories;
+  if(cats.length===0) return '<div class="empty-state" style="padding:20px;"><p>No categories yet.</p></div>';
+  return cats.map(function(c){
+    var count = categoryUsageCount(c.id);
+    return '<div class="manage-row">'+
+      '<span class="dot" style="background:'+c.color+';"></span>'+
+      '<div style="flex:1;min-width:0;">'+
+        '<div class="name">'+c.icon+' '+escapeHtml(c.name)+'</div>'+
+        '<div class="sub2">Default: '+c.defaultType+' · used '+count+'x</div>'+
+      '</div>'+
+      '<div class="actions">'+
+        '<button class="btn icon-only sm" title="Edit" onclick="Ledger.openCategoryModal(\''+c.id+'\')">'+icon('edit')+'</button>'+
+        '<button class="btn icon-only sm danger" title="Delete" onclick="Ledger.confirmDeleteCategory(\''+c.id+'\')">'+icon('trash')+'</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function renderRecurringManageList(){
+  var rules = listRecurring();
+  if(rules.length===0) return '<div class="empty-state" style="padding:20px;"><p>Nothing recurring yet. Add subscriptions, rent, or salary and Ledger will keep it up to date automatically.</p></div>';
+  return rules.map(function(r){
+    var acc = getAccount(r.account);
+    var next = r.active ? nextOccurrenceOf(r) : null;
+    return '<div class="manage-row">'+
+      '<span class="dot" style="background:'+(acc?acc.color:'#828F89')+';"></span>'+
+      '<div style="flex:1;min-width:0;">'+
+        '<div class="name">'+escapeHtml(r.description||(r.type.charAt(0).toUpperCase()+r.type.slice(1)))+' '+(r.active?'':'<span class="archived-badge">Paused</span>')+'</div>'+
+        '<div class="sub2">'+formatMoney(r.amount, r.currency)+' · '+escapeHtml(acc?acc.name:'?')+' · '+escapeHtml(describeRecurrence(r))+(next?(' · next '+formatDate(next)):'')+'</div>'+
+      '</div>'+
+      '<div class="actions">'+
+        '<button class="btn icon-only sm" title="Edit" onclick="Ledger.openRecurringModal(\''+r.id+'\')">'+icon('edit')+'</button>'+
+        '<button class="btn icon-only sm" title="'+(r.active?'Pause':'Resume')+'" onclick="Ledger.toggleRecurringActive(\''+r.id+'\')">'+icon(r.active?'pause':'play')+'</button>'+
+        '<button class="btn icon-only sm danger" title="Delete" onclick="Ledger.confirmDeleteRecurring(\''+r.id+'\')">'+icon('trash')+'</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+
+function setDefaultCurrency(cur){
+  state.data.meta.defaultCurrency = cur;
+  persistLocal('Change default currency to '+cur);
+}
+
+function disconnectStorage(){
+  var mode = state.settings && state.settings.storageMode;
+  var label = mode==='gitea' ? 'Gitea repository' : 'local file';
+  openModal(
+    '<div class="modal-head"><h2>Disconnect storage?</h2><button class="modal-close" onclick="Ledger.closeModal()">'+icon('x')+'</button></div>'+
+    '<p class="warn">'+icon('alert')+' This clears your saved connection to your '+label+' from this device. The data there is untouched, and your local cache stays put — connecting again (or somewhere new) will pick it back up.</p>'+
+    '<div class="modal-foot"><button class="btn" onclick="Ledger.closeModal()">Cancel</button><button class="btn danger" onclick="Ledger.doDisconnectStorage()">Disconnect</button></div>'
+  );
+}
+async function doDisconnectStorage(){
+  localStorage.removeItem(LS_SETTINGS);
+  state.settings = null;
+  state._settingsStorageTab = null;
+  state._onboardStep = null;
+  try{ await idbDelete(IDB_KEY_FILE); }catch(e){}
+  closeModal();
+  render();
+}
+
+async function settingsCreateLocalFile(){
+  try{
+    var handle = await createNewLocalFile('cashbook.json');
+    var data = state.data || defaultData();
+    await writeLocalFile(handle, data);
+    saveSettings(Object.assign({}, state.settings, { storageMode:'local', localMode:'fsapi', localFileName: handle.name }));
+    state._settingsStorageTab = 'local';
+    state.dirty = false; saveDirtyFlag();
+    setSyncState('synced');
+    toast('Now saving to '+handle.name+'.', 'ok');
+    render();
+  }catch(err){
+    if(err && err.name==='AbortError') return;
+    toast('Could not create the file: '+((err&&err.message)||'unknown error'), 'error');
+  }
+}
+
+async function settingsOpenLocalFile(){
+  try{
+    var handle = await pickExistingLocalFile();
+    var text = await readLocalFile(handle);
+    var parsed = text.trim() ? JSON.parse(text) : defaultData();
+    saveSettings(Object.assign({}, state.settings, { storageMode:'local', localMode:'fsapi', localFileName: handle.name }));
+    state._settingsStorageTab = 'local';
+    state.data = normalizeData(parsed);
+    var generated = runRecurringEngine();
+    state.dirty = generated;
+    saveCacheData(); saveDirtyFlag();
+    setSyncState(generated ? 'unsynced' : 'synced');
+    toast('Now using '+handle.name+'.', 'ok');
+    render();
+    if(generated) scheduledPush();
+  }catch(err){
+    if(err && err.name==='AbortError') return;
+    toast('Could not open that file: '+((err&&err.message)||'not valid JSON'), 'error');
+  }
+}
+
+function settingsManualLoad(inputEl){
+  var file = inputEl.files && inputEl.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    try{
+      var parsed = JSON.parse(reader.result);
+      saveSettings(Object.assign({}, state.settings, { storageMode:'local', localMode:'manual', localFileName: file.name }));
+      state._settingsStorageTab = 'local';
+      state.data = normalizeData(parsed);
+      var generated = runRecurringEngine();
+      state.dirty = generated;
+      saveCacheData(); saveDirtyFlag();
+      setSyncState(generated ? 'unsynced' : 'synced');
+      toast('Switched to local file: loaded '+file.name+'.', 'ok');
+      render();
+    }catch(e){ toast('That file is not valid JSON.', 'error'); }
+  };
+  reader.readAsText(file);
+  inputEl.value = '';
+}
+
+
+/* ============================================================
+   ACCOUNT modal (add / edit)
+   ============================================================ */
+function openAccountModal(id){
+  var acc = id ? getAccount(id) : null;
+  var isEdit = !!acc;
+  openModal(
+    '<div class="modal-head"><h2>'+(isEdit?'Edit account':'Add account')+'</h2><button class="modal-close" onclick="Ledger.closeModal()">'+icon('x')+'</button></div>'+
+    '<form id="account-form" onsubmit="return Ledger.submitAccountForm(event,'+(isEdit?('\''+id+'\''):'null')+')">'+
+      '<div class="field"><label for="a-name">Name</label><input type="text" id="a-name" required placeholder="e.g. Cash, Online, Savings" value="'+escapeHtml(acc?acc.name:'')+'"></div>'+
+      '<div class="field"><label for="a-type">Type / label</label><input type="text" id="a-type" placeholder="e.g. Cash, Bank, Savings, Crypto" value="'+escapeHtml(acc?acc.type:'')+'"></div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label for="a-balance">'+(isEdit?'Starting balance':'Starting balance')+'</label><input type="number" step="0.01" id="a-balance" value="'+(acc?numOr0(acc.startingBalance):'0')+'"></div>'+
+        '<div class="field"><label for="a-currency">Currency</label><select id="a-currency">'+
+          CURRENCIES.map(function(c){ return '<option value="'+c+'"'+((acc?acc.currency:state.data.meta.defaultCurrency)===c?' selected':'')+'>'+c+'</option>'; }).join('')+
+        '</select></div>'+
+      '</div>'+
+      '<div class="field"><label>Color</label><div class="swatch-picker" id="a-color-picker">'+
+        ACCOUNT_COLORS.map(function(c){ return '<div class="swatch'+((acc?acc.color:ACCOUNT_COLORS[0])===c?' selected':'')+'" data-color="'+c+'" style="background:'+c+';" onclick="Ledger.pickSwatch(this)"></div>'; }).join('')+
+      '</div></div>'+
+      '<div class="modal-foot"><button type="button" class="btn" onclick="Ledger.closeModal()">Cancel</button><button type="submit" class="btn primary">'+(isEdit?'Save changes':'Add account')+'</button></div>'+
+    '</form>'
+  );
+}
+function pickSwatch(el){
+  qsa('.swatch', el.parentElement).forEach(function(s){ s.classList.remove('selected'); });
+  el.classList.add('selected');
+}
+function submitAccountForm(e, id){
+  e.preventDefault();
+  var picked = qs('#a-color-picker .swatch.selected');
+  var payload = {
+    name: qs('#a-name').value.trim(),
+    type: qs('#a-type').value.trim(),
+    startingBalance: qs('#a-balance').value,
+    currency: qs('#a-currency').value,
+    color: picked ? picked.getAttribute('data-color') : ACCOUNT_COLORS[0]
+  };
+  if(!payload.name){ toast('Give the account a name.', 'error'); return false; }
+  if(id) updateAccount(id, payload); else addAccount(payload);
+  closeModal();
+  toast(id?'Account updated.':'Account added.', 'ok');
+  render();
+  return false;
+}
+function toggleArchiveAccount(id){
+  var acc = getAccount(id);
+  archiveAccount(id, !acc.archived);
+  toast(acc.archived ? 'Account unarchived.' : 'Account archived.', 'ok');
+  render();
+}
+function confirmDeleteAccount(id){
+  var acc = getAccount(id);
+  var count = accountTxnCount(id);
+  var recCount = accountRecurringCount(id);
+  if(count>0 || recCount>0){
+    var bits = [];
+    if(count>0) bits.push(count+' transaction'+(count===1?'':'s'));
+    if(recCount>0) bits.push(recCount+' recurring transaction'+(recCount===1?'':'s'));
+    openModal(
+      '<div class="modal-head"><h2>Delete “'+escapeHtml(acc.name)+'”?</h2><button class="modal-close" onclick="Ledger.closeModal()">'+icon('x')+'</button></div>'+
+      '<p class="warn">'+icon('alert')+' This account still has '+bits.join(' and ')+'. You can archive it (keeps everything, just hides it from the active list), or permanently delete it along with all of that.</p>'+
+      '<div class="btn-row" style="flex-direction:column;">'+
+        '<button class="btn primary" style="width:100%;" onclick="Ledger.toggleArchiveAccount(\''+id+'\');Ledger.closeModal();">Archive instead (keeps everything)</button>'+
+        '<button class="btn danger" style="width:100%;" onclick="Ledger.confirmDeleteAccountCascade(\''+id+'\')">Delete account and '+bits.join(' and ')+'</button>'+
+        '<button class="btn ghost" style="width:100%;" onclick="Ledger.closeModal()">Cancel</button>'+
+      '</div>'
+    );
+    return;
+  }
+  openModal(
+    '<div class="modal-head"><h2>Delete “'+escapeHtml(acc.name)+'”?</h2><button class="modal-close" onclick="Ledger.closeModal()">'+icon('x')+'</button></div>'+
+    '<p class="warn">'+icon('alert')+' This account has no transactions, so it can be removed permanently. This can\'t be undone.</p>'+
+    '<div class="modal-foot"><button class="btn" onclick="Ledger.closeModal()">Cancel</button><button class="btn danger" onclick="Ledger.doDeleteAccount(\''+id+'\')">Delete account</button></div>'
+  );
+}
+// Second, explicit confirmation step before an irreversible cascade delete.
+function confirmDeleteAccountCascade(id){
+  var acc = getAccount(id);
+  if(!acc) return;
+  var count = accountTxnCount(id);
+  var recCount = accountRecurringCount(id);
+  var bits = [];
+  if(count>0) bits.push(count+' transaction'+(count===1?'':'s'));
+  if(recCount>0) bits.push(recCount+' recurring transaction'+(recCount===1?'':'s'));
+  openModal(
+    '<div class="modal-head"><h2>'+icon('alert')+' Permanently delete?</h2><button class="modal-close" onclick="Ledger.closeModal()">'+icon('x')+'</button></div>'+
+    '<p class="warn">'+icon('alert')+' This will delete “'+escapeHtml(acc.name)+'” <strong>and all '+bits.join(' and ')+'</strong> linked to it — including its side of any transfers with other accounts. This cannot be undone once it syncs.</p>'+
+    '<div class="modal-foot"><button class="btn" onclick="Ledger.closeModal()">Cancel</button><button class="btn danger" onclick="Ledger.doDeleteAccountCascade(\''+id+'\')">Yes, delete permanently</button></div>'
+  );
+}
+function doDeleteAccountCascade(id){
+  var res = deleteAccountCascade(id);
+  closeModal();
+  if(res.ok){
+    toast('Account and its transactions deleted.', 'ok');
+    if(state.route.name==='account' && state.route.params.id===id) navigate('#/dashboard'); else render();
+  } else {
+    toast('Could not delete that account.', 'error');
+  }
+}
+function doDeleteAccount(id){
+  var res = deleteAccount(id);
+  closeModal();
+  if(res.ok){ toast('Account deleted.', 'ok'); if(state.route.name==='account' && state.route.params.id===id) navigate('#/dashboard'); else render(); }
+  else toast('Could not delete — it still has transactions or recurring rules using it.', 'error');
+}
+
+/* ============================================================
+   CATEGORY modal (add / edit)
+   ============================================================ */
+function openCategoryModal(id){
+  var cat = id ? getCategory(id) : null;
+  var isEdit = !!cat;
+  var icons = ['💼','➕','🛒','🏠','💡','🚌','🍽️','🎬','💊','🛍️','✈️','🎓','🐾','🎁','📦','•'];
+  openModal(
+    '<div class="modal-head"><h2>'+(isEdit?'Edit category':'Add category')+'</h2><button class="modal-close" onclick="Ledger.closeModal()">'+icon('x')+'</button></div>'+
+    '<form id="category-form" onsubmit="return Ledger.submitCategoryForm(event,'+(isEdit?('\''+id+'\''):'null')+')">'+
+      '<div class="field"><label for="c-name">Name</label><input type="text" id="c-name" required placeholder="e.g. Groceries" value="'+escapeHtml(cat?cat.name:'')+'"></div>'+
+      '<div class="field"><label>Default type</label><div class="type-toggle" id="c-type-toggle">'+
+        ['income','expense'].map(function(t){ return '<button type="button" data-type="'+t+'" class="'+((cat?cat.defaultType:'expense')===t?'active':'')+'" onclick="Ledger.pickTypeToggle(this,\'c-type-toggle\')">'+(t==='income'?'Income':'Expense')+'</button>'; }).join('')+
+      '</div></div>'+
+      '<div class="field"><label>Icon</label><div class="swatch-picker" id="c-icon-picker">'+
+        icons.map(function(ic){ return '<div class="swatch'+((cat?cat.icon:'•')===ic?' selected':'')+'" data-icon="'+ic+'" style="background:var(--bg-sunken);font-size:14px;display:flex;align-items:center;justify-content:center;" onclick="Ledger.pickIconSwatch(this)">'+ic+'</div>'; }).join('')+
+      '</div></div>'+
+      '<div class="field"><label>Color</label><div class="swatch-picker" id="c-color-picker">'+
+        CATEGORY_COLORS.map(function(c){ return '<div class="swatch'+((cat?cat.color:CATEGORY_COLORS[0])===c?' selected':'')+'" data-color="'+c+'" style="background:'+c+';" onclick="Ledger.pickSwatch(this)"></div>'; }).join('')+
+      '</div></div>'+
+      '<div class="modal-foot"><button type="button" class="btn" onclick="Ledger.closeModal()">Cancel</button><button type="submit" class="btn primary">'+(isEdit?'Save changes':'Add category')+'</button></div>'+
+    '</form>'
+  );
+}
+function pickTypeToggle(el, groupId){
+  qsa('#'+groupId+' button').forEach(function(b){ b.classList.remove('active'); });
+  el.classList.add('active');
+}
+function pickIconSwatch(el){
+  qsa('#c-icon-picker .swatch').forEach(function(s){ s.classList.remove('selected'); });
+  el.classList.add('selected');
+}
+function submitCategoryForm(e, id){
+  e.preventDefault();
+  var typeBtn = qs('#c-type-toggle button.active');
+  var iconEl = qs('#c-icon-picker .swatch.selected') || qs('#c-icon-picker .swatch');
+  var colorEl = qs('#c-color-picker .swatch.selected');
+  var payload = {
+    name: qs('#c-name').value.trim(),
+    defaultType: typeBtn ? typeBtn.getAttribute('data-type') : 'expense',
+    icon: iconEl ? iconEl.getAttribute('data-icon') : '•',
+    color: colorEl ? colorEl.getAttribute('data-color') : CATEGORY_COLORS[0]
+  };
+  if(!payload.name){ toast('Give the category a name.', 'error'); return false; }
+  if(id) updateCategory(id, payload); else addCategory(payload);
+  closeModal();
+  toast(id?'Category updated.':'Category added.', 'ok');
+  render();
+  return false;
+}
+function confirmDeleteCategory(id){
+  var cat = getCategory(id);
+  var count = categoryUsageCount(id);
+  var recCount = categoryRecurringCount(id);
+  if(count>0 || recCount>0){
+    var bits = [];
+    if(count>0) bits.push(count+' transaction'+(count===1?'':'s'));
+    if(recCount>0) bits.push(recCount+' recurring transaction'+(recCount===1?'':'s'));
+    openModal(
+      '<div class="modal-head"><h2>Can\'t delete “'+escapeHtml(cat.name)+'”</h2><button class="modal-close" onclick="Ledger.closeModal()">'+icon('x')+'</button></div>'+
+      '<p class="warn">'+icon('alert')+' This category is used by '+bits.join(' and ')+'. Reassign or delete those first.</p>'+
+      '<div class="modal-foot"><button class="btn primary" onclick="Ledger.closeModal()">Close</button></div>'
+    );
+    return;
+  }
+  openModal(
+    '<div class="modal-head"><h2>Delete “'+escapeHtml(cat.name)+'”?</h2><button class="modal-close" onclick="Ledger.closeModal()">'+icon('x')+'</button></div>'+
+    '<p class="warn">'+icon('alert')+' This can\'t be undone.</p>'+
+    '<div class="modal-foot"><button class="btn" onclick="Ledger.closeModal()">Cancel</button><button class="btn danger" onclick="Ledger.doDeleteCategory(\''+id+'\')">Delete category</button></div>'
+  );
+}
+function doDeleteCategory(id){
+  var res = deleteCategory(id);
+  closeModal();
+  if(res.ok){ toast('Category deleted.', 'ok'); render(); }
+  else toast('Could not delete — it\'s still in use.', 'error');
+}
+
+/* ============================================================
+   CONFLICT modal
+   ============================================================ */
+function openConflictModal(){
+  openModal(
+    '<div class="modal-head"><h2>'+icon('alert')+' Sync conflict</h2></div>'+
+    '<p class="warn">The data file on Gitea has changed since your last sync (maybe from another device). Choose how to resolve it:</p>'+
+    '<div class="btn-row" style="flex-direction:column;">'+
+      '<button class="btn primary" style="width:100%;" onclick="Ledger.resolveConflictKeepMine()">Keep my changes — overwrite the server copy</button>'+
+      '<button class="btn" style="width:100%;" onclick="Ledger.resolveConflictLoadTheirs()">Load the server copy — discard my local changes</button>'+
+    '</div>'
+  );
+}
+
+
+/* ============================================================
+   TRANSACTION modal (add / edit) — income, expense, or transfer
+   ============================================================ */
+function openTxnModal(id, presetAccountId){
+  var txn = id ? state.data.transactions.find(function(t){ return t.id===id; }) : null;
+  var isEdit = !!txn;
+  var accs = listAccounts();
+  if(accs.length===0){
+    toast('Add an account first before recording transactions.', 'error');
+    navigate('#/settings');
+    return;
+  }
+  var type = txn ? txn.type : 'expense';
+  var accountId = txn ? txn.account : (presetAccountId || accs[0].id);
+  var linkedRule = (txn && txn.recurringId) ? getRecurring(txn.recurringId) : null;
+  openModal(
+    '<div class="modal-head"><h2>'+(isEdit?'Edit transaction':'Add transaction')+'</h2><button class="modal-close" onclick="Ledger.closeModal()">'+icon('x')+'</button></div>'+
+    '<form id="txn-form" onsubmit="return Ledger.submitTxnForm(event,'+(isEdit?('\''+id+'\''):'null')+')">'+
+      '<div class="field"><label>Type</label><div class="type-toggle" id="t-type-toggle">'+
+        ['income','expense','transfer'].map(function(t){
+          return '<button type="button" data-type="'+t+'" class="'+(type===t?'active':'')+'" onclick="Ledger.pickTxnType(this)">'+t.charAt(0).toUpperCase()+t.slice(1)+'</button>';
+        }).join('')+
+      '</div></div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label for="t-date">Date</label><input type="date" id="t-date" value="'+(txn?txn.date:todayISO())+'" onchange="Ledger.updateRepeatPreview()"></div>'+
+        '<div class="field"><label for="t-amount">Amount</label><input type="number" step="0.01" min="0" id="t-amount" required value="'+(txn?txn.amount:'')+'" placeholder="0.00"></div>'+
+      '</div>'+
+      '<div class="field" id="t-account-field"><label for="t-account" id="t-account-label">Account</label>'+
+        '<select id="t-account" onchange="Ledger.checkTransferCurrency()">'+ accs.map(function(a){ return '<option value="'+a.id+'"'+(a.id===accountId?' selected':'')+'>'+escapeHtml(a.name)+' ('+a.currency+')</option>'; }).join('') +'</select>'+
+      '</div>'+
+      '<div class="field" id="t-to-account-field" style="display:'+(type==='transfer'?'flex':'none')+';"><label for="t-to-account">To account</label>'+
+        '<select id="t-to-account" onchange="Ledger.checkTransferCurrency()">'+ accs.map(function(a){ return '<option value="'+a.id+'"'+(txn&&txn.toAccount===a.id?' selected':'')+'>'+escapeHtml(a.name)+' ('+a.currency+')</option>'; }).join('') +'</select>'+
+        '<span class="hint" id="t-currency-warn"></span>'+
+      '</div>'+
+      '<div class="field" id="t-category-field" style="display:'+(type==='transfer'?'none':'flex')+';"><label for="t-category">Category</label>'+
+        '<select id="t-category">'+ '<option value="">No category</option>' + listCategories().map(function(c){ return '<option value="'+c.id+'"'+(txn&&txn.category===c.id?' selected':'')+'>'+c.icon+' '+escapeHtml(c.name)+'</option>'; }).join('') +'</select>'+
+      '</div>'+
+      '<div class="field"><label for="t-desc">Description</label><input type="text" id="t-desc" placeholder="e.g. Weekly groceries" value="'+escapeHtml(txn?txn.description:'')+'"></div>'+
+      '<div class="field"><label for="t-tags">Tags <span class="hint">(comma-separated)</span></label><input type="text" id="t-tags" placeholder="e.g. recurring, trip" value="'+escapeHtml(txn&&txn.tags?txn.tags.join(', '):'')+'"></div>'+
+      '<div class="field"><label for="t-notes">Notes</label><textarea id="t-notes" placeholder="Optional details">'+escapeHtml(txn?txn.notes:'')+'</textarea></div>'+
+      renderRepeatSection(linkedRule)+
+      '<div class="modal-foot">'+
+        (isEdit ? '<button type="button" class="btn danger" style="margin-right:auto;" onclick="Ledger.confirmDeleteTxn(\''+id+'\')">Delete</button>' : '')+
+        '<button type="button" class="btn" onclick="Ledger.closeModal()">Cancel</button>'+
+        '<button type="submit" class="btn primary">'+(isEdit?'Save changes':'Add transaction')+'</button>'+
+      '</div>'+
+    '</form>'
+  );
+  checkTransferCurrency();
+  updateRepeatPreview();
+}
+
+// Either a banner pointing at the existing series, or the "make this
+// repeat" controls for a transaction that isn't (yet) part of one.
+function renderRepeatSection(linkedRule){
+  if(linkedRule){
+    return '<div class="field"><div class="conn-status ok">'+icon('repeat')+' Part of a recurring series — '+escapeHtml(describeRecurrence(linkedRule))+'</div>'+
+      '<button type="button" class="btn sm" onclick="Ledger.closeModal();Ledger.openRecurringModal(\''+linkedRule.id+'\')">Manage series</button>'+
+      '<div class="hint" style="margin-top:6px;">Editing the amount/date here only changes this one occurrence.</div>'+
+    '</div>';
+  }
+  return (
+    '<div class="field checkbox-row" style="margin:2px 0 4px;">'+
+      '<input type="checkbox" id="t-repeat-toggle" onchange="Ledger.toggleRepeatSection()">'+
+      '<label for="t-repeat-toggle" style="margin:0;font-weight:600;">Repeat this transaction</label>'+
+    '</div>'+
+    '<div id="t-repeat-fields" style="display:none;">'+
+      '<div class="field-row">'+
+        '<div class="field"><label for="t-repeat-freq">Frequency</label><select id="t-repeat-freq" onchange="Ledger.updateRepeatPreview()">'+
+          ['daily','weekly','monthly','yearly'].map(function(f){ return '<option value="'+f+'"'+(f==='monthly'?' selected':'')+'>'+f.charAt(0).toUpperCase()+f.slice(1)+'</option>'; }).join('')+
+        '</select></div>'+
+        '<div class="field"><label for="t-repeat-interval">Every</label><input type="number" min="1" step="1" id="t-repeat-interval" value="1" oninput="Ledger.updateRepeatPreview()"></div>'+
+      '</div>'+
+      '<div class="field"><label>Ends</label><div class="type-toggle" id="t-repeat-end-toggle">'+
+        '<button type="button" data-end="never" class="active" onclick="Ledger.pickRepeatEnd(this)">Never</button>'+
+        '<button type="button" data-end="date" onclick="Ledger.pickRepeatEnd(this)">On a date</button>'+
+      '</div></div>'+
+      '<div class="field" id="t-repeat-enddate-field" style="display:none;"><label for="t-repeat-enddate">End date</label><input type="date" id="t-repeat-enddate"></div>'+
+      '<div class="hint" id="t-repeat-preview"></div>'+
+    '</div>'
+  );
+}
+function toggleRepeatSection(){
+  var on = qs('#t-repeat-toggle').checked;
+  qs('#t-repeat-fields').style.display = on ? 'block' : 'none';
+  updateRepeatPreview();
+}
+function pickRepeatEnd(el){
+  qsa('#t-repeat-end-toggle button').forEach(function(b){ b.classList.remove('active'); });
+  el.classList.add('active');
+  qs('#t-repeat-enddate-field').style.display = el.getAttribute('data-end')==='date' ? 'flex' : 'none';
+  updateRepeatPreview();
+}
+function updateRepeatPreview(){
+  var preview = qs('#t-repeat-preview');
+  if(!preview) return;
+  var toggle = qs('#t-repeat-toggle');
+  if(!toggle || !toggle.checked){ preview.textContent=''; return; }
+  var dateVal = qs('#t-date').value || todayISO();
+  var endBtn = qs('#t-repeat-end-toggle button.active');
+  var tempRule = {
+    frequency: qs('#t-repeat-freq').value,
+    interval: parseInt(qs('#t-repeat-interval').value,10)||1,
+    startDate: dateVal,
+    endDate: (endBtn && endBtn.getAttribute('data-end')==='date') ? (qs('#t-repeat-enddate').value||null) : null
+  };
+  preview.textContent = 'Starts '+formatDate(dateVal)+' · '+describeRecurrence(tempRule);
+}
+function pickTxnType(el){
+  qsa('#t-type-toggle button').forEach(function(b){ b.classList.remove('active'); });
+  el.classList.add('active');
+  var type = el.getAttribute('data-type');
+  qs('#t-to-account-field').style.display = type==='transfer' ? 'flex' : 'none';
+  qs('#t-category-field').style.display = type==='transfer' ? 'none' : 'flex';
+  qs('#t-account-label').textContent = type==='transfer' ? 'From account' : 'Account';
+  checkTransferCurrency();
+}
+function checkTransferCurrency(){
+  var typeBtn = qs('#t-type-toggle button.active');
+  var warn = qs('#t-currency-warn');
+  if(!typeBtn || !warn) return;
+  if(typeBtn.getAttribute('data-type')!=='transfer'){ warn.textContent=''; return; }
+  var fromAcc = getAccount(qs('#t-account').value);
+  var toAcc = getAccount(qs('#t-to-account').value);
+  if(fromAcc && toAcc && fromAcc.currency !== toAcc.currency){
+    warn.textContent = 'Different currencies — amount moves 1:1 with no conversion applied.';
+  } else warn.textContent = '';
+}
+function submitTxnForm(e, id){
+  e.preventDefault();
+  var typeBtn = qs('#t-type-toggle button.active');
+  var type = typeBtn ? typeBtn.getAttribute('data-type') : 'expense';
+  var accountId = qs('#t-account').value;
+  var toAccountId = qs('#t-to-account').value;
+  if(type==='transfer' && accountId===toAccountId){ toast('Pick two different accounts for a transfer.', 'error'); return false; }
+  var amount = parseFloat(qs('#t-amount').value);
+  if(!amount || amount<=0){ toast('Enter an amount greater than zero.', 'error'); return false; }
+  var payload = {
+    date: qs('#t-date').value || todayISO(),
+    account: accountId,
+    toAccount: toAccountId,
+    type: type,
+    category: qs('#t-category').value || null,
+    amount: amount,
+    currency: (getAccount(accountId)||{}).currency,
+    description: qs('#t-desc').value,
+    notes: qs('#t-notes').value,
+    tags: qs('#t-tags').value.split(',').map(function(s){ return s.trim(); }).filter(Boolean)
+  };
+  var repeatToggle = qs('#t-repeat-toggle');
+  var wantsRepeat = !!(repeatToggle && repeatToggle.checked);
+
+  if(wantsRepeat){
+    var endBtn = qs('#t-repeat-end-toggle button.active');
+    var recPayload = Object.assign({}, payload, {
+      frequency: qs('#t-repeat-freq').value,
+      interval: qs('#t-repeat-interval').value,
+      startDate: payload.date,
+      endDate: (endBtn && endBtn.getAttribute('data-end')==='date') ? (qs('#t-repeat-enddate').value || null) : null
+    });
+    if(id){
+      // This transaction already existed as a one-off — turn it into the
+      // first occurrence of a new series without duplicating it.
+      updateTransaction(id, payload);
+      var newRule = addRecurring(recPayload, payload.date);
+      var editedTxn = state.data.transactions.find(function(t){ return t.id===id; });
+      if(editedTxn) editedTxn.recurringId = newRule.id;
+    } else {
+      addRecurring(recPayload, null);
+    }
+    runRecurringEngine();
+    persistLocal(id ? 'Make transaction recurring' : 'Add recurring transaction');
+  } else {
+    if(id) updateTransaction(id, payload); else addTransaction(payload);
+  }
+  closeModal();
+  toast(id?'Transaction updated.':(wantsRepeat?'Recurring transaction added.':'Transaction added.'), 'ok');
+  render();
+  return false;
+}
+
+/* ============================================================
+   RECURRING RULE modal (add / edit a series directly — used from
+   Settings → Recurring transactions, and "Manage series")
+   ============================================================ */
+function openRecurringModal(id){
+  var rule = id ? getRecurring(id) : null;
+  var isEdit = !!rule;
+  var accs = listAccounts();
+  if(accs.length===0){
+    toast('Add an account first before setting up a recurring transaction.', 'error');
+    navigate('#/settings');
+    return;
+  }
+  var type = rule ? rule.type : 'expense';
+  var accountId = rule ? rule.account : accs[0].id;
+  var freq = rule ? rule.frequency : 'monthly';
+  var hasEnd = !!(rule && rule.endDate);
+  openModal(
+    '<div class="modal-head"><h2>'+(isEdit?'Edit recurring transaction':'New recurring transaction')+'</h2><button class="modal-close" onclick="Ledger.closeModal()">'+icon('x')+'</button></div>'+
+    '<form id="rec-form" onsubmit="return Ledger.submitRecurringForm(event,'+(isEdit?('\''+id+'\''):'null')+')">'+
+      '<div class="field"><label>Type</label><div class="type-toggle" id="r-type-toggle">'+
+        ['income','expense','transfer'].map(function(t){
+          return '<button type="button" data-type="'+t+'" class="'+(type===t?'active':'')+'" onclick="Ledger.pickRecurringType(this)">'+t.charAt(0).toUpperCase()+t.slice(1)+'</button>';
+        }).join('')+
+      '</div></div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label for="r-start">Start date</label><input type="date" id="r-start" value="'+(rule?rule.startDate:todayISO())+'" onchange="Ledger.updateRecurringPreview()"></div>'+
+        '<div class="field"><label for="r-amount">Amount</label><input type="number" step="0.01" min="0" id="r-amount" required value="'+(rule?rule.amount:'')+'" placeholder="0.00"></div>'+
+      '</div>'+
+      '<div class="field" id="r-account-field"><label for="r-account" id="r-account-label">Account</label>'+
+        '<select id="r-account">'+ accs.map(function(a){ return '<option value="'+a.id+'"'+(a.id===accountId?' selected':'')+'>'+escapeHtml(a.name)+' ('+a.currency+')</option>'; }).join('') +'</select>'+
+      '</div>'+
+      '<div class="field" id="r-to-account-field" style="display:'+(type==='transfer'?'flex':'none')+';"><label for="r-to-account">To account</label>'+
+        '<select id="r-to-account">'+ accs.map(function(a){ return '<option value="'+a.id+'"'+(rule&&rule.toAccount===a.id?' selected':'')+'>'+escapeHtml(a.name)+' ('+a.currency+')</option>'; }).join('') +'</select>'+
+      '</div>'+
+      '<div class="field" id="r-category-field" style="display:'+(type==='transfer'?'none':'flex')+';"><label for="r-category">Category</label>'+
+        '<select id="r-category">'+ '<option value="">No category</option>' + listCategories().map(function(c){ return '<option value="'+c.id+'"'+(rule&&rule.category===c.id?' selected':'')+'>'+c.icon+' '+escapeHtml(c.name)+'</option>'; }).join('') +'</select>'+
+      '</div>'+
+      '<div class="field"><label for="r-desc">Description</label><input type="text" id="r-desc" placeholder="e.g. Netflix subscription" value="'+escapeHtml(rule?rule.description:'')+'"></div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label for="r-freq">Frequency</label><select id="r-freq" onchange="Ledger.updateRecurringPreview()">'+
+          ['daily','weekly','monthly','yearly'].map(function(f){ return '<option value="'+f+'"'+(f===freq?' selected':'')+'>'+f.charAt(0).toUpperCase()+f.slice(1)+'</option>'; }).join('')+
+        '</select></div>'+
+        '<div class="field"><label for="r-interval">Every</label><input type="number" min="1" step="1" id="r-interval" value="'+(rule?rule.interval:1)+'" oninput="Ledger.updateRecurringPreview()"></div>'+
+      '</div>'+
+      '<div class="field"><label>Ends</label><div class="type-toggle" id="r-end-toggle">'+
+        '<button type="button" data-end="never" class="'+(hasEnd?'':'active')+'" onclick="Ledger.pickRepeatEnd_(this,\'r\')">Never</button>'+
+        '<button type="button" data-end="date" class="'+(hasEnd?'active':'')+'" onclick="Ledger.pickRepeatEnd_(this,\'r\')">On a date</button>'+
+      '</div></div>'+
+      '<div class="field" id="r-enddate-field" style="display:'+(hasEnd?'flex':'none')+';"><label for="r-enddate">End date</label><input type="date" id="r-enddate" value="'+(rule&&rule.endDate?rule.endDate:'')+'" onchange="Ledger.updateRecurringPreview()"></div>'+
+      '<div class="hint" id="r-preview"></div>'+
+      '<div class="modal-foot">'+
+        '<button type="button" class="btn" onclick="Ledger.closeModal()">Cancel</button>'+
+        '<button type="submit" class="btn primary">'+(isEdit?'Save changes':'Create recurring transaction')+'</button>'+
+      '</div>'+
+    '</form>'
+  );
+  updateRecurringPreview();
+}
+function pickRecurringType(el){
+  qsa('#r-type-toggle button').forEach(function(b){ b.classList.remove('active'); });
+  el.classList.add('active');
+  var type = el.getAttribute('data-type');
+  qs('#r-to-account-field').style.display = type==='transfer' ? 'flex' : 'none';
+  qs('#r-category-field').style.display = type==='transfer' ? 'none' : 'flex';
+  qs('#r-account-label').textContent = type==='transfer' ? 'From account' : 'Account';
+}
+function pickRepeatEnd_(el, prefix){
+  qsa('#'+prefix+'-end-toggle button').forEach(function(b){ b.classList.remove('active'); });
+  el.classList.add('active');
+  qs('#'+prefix+'-enddate-field').style.display = el.getAttribute('data-end')==='date' ? 'flex' : 'none';
+  if(prefix==='r') updateRecurringPreview(); else updateRepeatPreview();
+}
+function updateRecurringPreview(){
+  var preview = qs('#r-preview');
+  if(!preview) return;
+  var endBtn = qs('#r-end-toggle button.active');
+  var tempRule = {
+    frequency: qs('#r-freq').value,
+    interval: parseInt(qs('#r-interval').value,10)||1,
+    startDate: qs('#r-start').value || todayISO(),
+    endDate: (endBtn && endBtn.getAttribute('data-end')==='date') ? (qs('#r-enddate').value||null) : null
+  };
+  preview.textContent = 'Starts '+formatDate(tempRule.startDate)+' · '+describeRecurrence(tempRule);
+}
+function submitRecurringForm(e, id){
+  e.preventDefault();
+  var typeBtn = qs('#r-type-toggle button.active');
+  var type = typeBtn ? typeBtn.getAttribute('data-type') : 'expense';
+  var accountId = qs('#r-account').value;
+  var toAccountId = qs('#r-to-account').value;
+  if(type==='transfer' && accountId===toAccountId){ toast('Pick two different accounts for a transfer.', 'error'); return false; }
+  var amount = parseFloat(qs('#r-amount').value);
+  if(!amount || amount<=0){ toast('Enter an amount greater than zero.', 'error'); return false; }
+  var endBtn = qs('#r-end-toggle button.active');
+  var payload = {
+    account: accountId, toAccount: toAccountId, type: type,
+    category: qs('#r-category').value || null, amount: amount,
+    currency: (getAccount(accountId)||{}).currency,
+    description: qs('#r-desc').value, notes: '', tags: [],
+    frequency: qs('#r-freq').value, interval: qs('#r-interval').value,
+    startDate: qs('#r-start').value || todayISO(),
+    endDate: (endBtn && endBtn.getAttribute('data-end')==='date') ? (qs('#r-enddate').value||null) : null
+  };
+  if(id){
+    updateRecurring(id, payload);
+  } else {
+    addRecurring(payload, null);
+    runRecurringEngine();
+    persistLocal('Add recurring transaction');
+  }
+  closeModal();
+  toast(id?'Recurring transaction updated.':'Recurring transaction added.', 'ok');
+  render();
+  return false;
+}
+function confirmDeleteRecurring(id){
+  var rule = getRecurring(id);
+  if(!rule) return;
+  var count = recurringTxnCount(id);
+  openModal(
+    '<div class="modal-head"><h2>Delete “'+escapeHtml(rule.description||rule.type)+'”?</h2><button class="modal-close" onclick="Ledger.closeModal()">'+icon('x')+'</button></div>'+
+    (count>0
+      ? '<p class="warn">'+icon('alert')+' This series has generated '+count+' transaction'+(count===1?'':'s')+' so far. You can stop it and keep that history, or delete the series along with all '+count+' transaction'+(count===1?'':'s')+' it created.</p>'+
+        '<div class="btn-row" style="flex-direction:column;">'+
+          '<button class="btn primary" style="width:100%;" onclick="Ledger.doDeleteRecurring(\''+id+'\',false)">Stop series (keep its '+count+' transaction'+(count===1?'':'s')+')</button>'+
+          '<button class="btn danger" style="width:100%;" onclick="Ledger.doDeleteRecurring(\''+id+'\',true)">Delete series and its '+count+' transaction'+(count===1?'':'s')+'</button>'+
+          '<button class="btn ghost" style="width:100%;" onclick="Ledger.closeModal()">Cancel</button>'+
+        '</div>'
+      : '<p class="warn">'+icon('alert')+' This hasn\'t generated any transactions yet. This can\'t be undone.</p>'+
+        '<div class="modal-foot"><button class="btn" onclick="Ledger.closeModal()">Cancel</button><button class="btn danger" onclick="Ledger.doDeleteRecurring(\''+id+'\',false)">Delete</button></div>'
+    )
+  );
+}
+function doDeleteRecurring(id, cascade){
+  if(cascade) deleteRecurringCascade(id); else deleteRecurringRuleOnly(id);
+  closeModal();
+  toast('Recurring transaction deleted.', 'ok');
+  render();
+}
+function toggleRecurringActive(id){
+  var rule = getRecurring(id);
+  if(!rule) return;
+  setRecurringActive(id, !rule.active);
+  toast(rule.active ? 'Resumed.' : 'Paused.', 'ok');
+  render();
+}
+
+function confirmDeleteTxn(id){
+  closeModal();
+  openModal(
+    '<div class="modal-head"><h2>Delete transaction?</h2><button class="modal-close" onclick="Ledger.closeModal()">'+icon('x')+'</button></div>'+
+    '<p class="warn">'+icon('alert')+' This can\'t be undone.</p>'+
+    '<div class="modal-foot"><button class="btn" onclick="Ledger.closeModal()">Cancel</button><button class="btn danger" onclick="Ledger.doDeleteTxn(\''+id+'\')">Delete</button></div>'
+  );
+}
+function doDeleteTxn(id){
+  deleteTransaction(id);
+  closeModal();
+  toast('Transaction deleted.', 'ok');
+  render();
+}
+
+
+/* ============================================================
+   DASHBOARD VIEW
+   ============================================================ */
+function renderDashboard(root){
+  var accs = listAccounts();
+  var netByCur = netWorthByCurrency();
+  var curKeys = Object.keys(netByCur);
+  var ym = currentMonthKey();
+  var totals = monthlyTotals(ym);
+  var recent = recentTransactions(8);
+  var upcoming = upcomingRecurring(14, 6);
+
+  root.innerHTML =
+    '<div class="view-head"><div><h1>Dashboard</h1><div class="sub">'+formatDate(todayISO(),{weekday:'long', day:'numeric', month:'long'})+'</div></div>'+
+      '<div class="btn-row"><button class="btn" onclick="Ledger.syncNow()">'+icon('refresh')+' Sync now</button><button class="btn primary" onclick="Ledger.openTxnModal()">'+icon('plus')+' Add transaction</button></div>'+
+    '</div>'+
+
+    (accs.length===0 ? renderEmptyAccounts() : (
+      '<div class="stat-row">'+
+        curKeys.map(function(cur){
+          return '<div class="stat-card"><div class="label">Net balance'+(curKeys.length>1?(' · '+cur):'')+'</div><div class="value tnum">'+formatMoney(netByCur[cur],cur)+'</div></div>';
+        }).join('')+
+        '<div class="stat-card"><div class="label">Income this month</div><div class="value income tnum">'+formatMoney(totals.income, state.data.meta.defaultCurrency)+'</div></div>'+
+        '<div class="stat-card"><div class="label">Expenses this month</div><div class="value expense tnum">'+formatMoney(totals.expense, state.data.meta.defaultCurrency)+'</div></div>'+
+      '</div>'+
+
+      '<div class="section-title"><h2>Accounts</h2><button class="link" onclick="Ledger.openAccountModal()">'+icon('plus')+' Add account</button></div>'+
+      '<div class="card-grid">'+ accs.map(renderAccountCard).join('') +'</div>'+
+
+      (listRecurring().length>0 ?
+        '<div class="section-title"><h2>Upcoming</h2><a class="link" href="#/settings">Manage recurring</a></div>'+
+        (upcoming.length===0 ? '<div class="empty-state" style="padding:22px;"><p>Nothing scheduled in the next 14 days.</p></div>' : renderUpcomingList(upcoming))
+      : '')+
+
+      '<div class="section-title"><h2>This month</h2></div>'+
+      '<div class="chart-grid">'+
+        '<div class="chart-card"><h3>Balance trend (last 6 months)</h3><div class="chart-wrap"><canvas id="chart-balance-trend"></canvas></div></div>'+
+        '<div class="chart-card"><h3>Spending by category</h3><div class="chart-wrap" id="chart-cat-wrap"><canvas id="chart-cat-spend"></canvas></div></div>'+
+      '</div>'+
+
+      '<div class="section-title"><h2>Recent transactions</h2><a class="link" href="#/transactions">View all</a></div>'+
+      (recent.length===0 ? renderEmptyTxns() : renderTxnListGeneric(recent, {showAccount:true}))
+    ));
+
+  if(accs.length>0){
+    drawBalanceTrendChart();
+    drawCategorySpendChart(ym);
+  }
+}
+
+// Active recurring rules with a next occurrence within `days` days from today.
+function upcomingRecurring(days, limit){
+  var today = todayISO();
+  var horizon = addDaysISO(today, days);
+  var items = [];
+  listRecurring().forEach(function(r){
+    if(!r.active) return;
+    var next = nextOccurrenceOf(r);
+    if(next && next <= horizon) items.push({rule:r, date:next});
+  });
+  items.sort(function(a,b){ return a.date<b.date?-1:(a.date>b.date?1:0); });
+  return limit ? items.slice(0, limit) : items;
+}
+function relativeDayLabel(iso){
+  var today = todayISO();
+  if(iso===today) return 'Today';
+  if(iso===addDaysISO(today,1)) return 'Tomorrow';
+  return formatDateShort(iso);
+}
+function renderUpcomingList(items){
+  var desktop = '<table class="ledger ledger-desktop"><thead><tr><th>When</th><th>Description</th><th>Account</th><th class="num">Amount</th></tr></thead><tbody>'+
+    items.map(function(it){
+      var r = it.rule, acc = getAccount(r.account);
+      return '<tr onclick="Ledger.openRecurringModal(\''+r.id+'\')" style="cursor:pointer;">'+
+        '<td class="muted">'+relativeDayLabel(it.date)+'</td>'+
+        '<td class="desc">'+icon('repeat')+' '+escapeHtml(r.description||(r.type.charAt(0).toUpperCase()+r.type.slice(1)))+'</td>'+
+        '<td class="acct-tag">'+escapeHtml(acc?acc.name:'?')+'</td>'+
+        '<td class="num amt '+txnAmountClass(r)+'">'+txnTypeSign(r)+' '+formatMoney(r.amount, r.currency)+'</td>'+
+      '</tr>';
+    }).join('')+
+  '</tbody></table>';
+  var mobile = '<div class="ledger-mobile">'+ items.map(function(it){
+    var r = it.rule, acc = getAccount(r.account);
+    return '<div class="txn-row" onclick="Ledger.openRecurringModal(\''+r.id+'\')">'+
+      '<div class="txn-left"><div class="desc">'+icon('repeat')+' '+escapeHtml(r.description||(r.type.charAt(0).toUpperCase()+r.type.slice(1)))+'</div><div class="meta">'+relativeDayLabel(it.date)+' · '+escapeHtml(acc?acc.name:'?')+'</div></div>'+
+      '<div class="txn-right"><div class="amt '+txnAmountClass(r)+'">'+txnTypeSign(r)+' '+formatMoney(r.amount, r.currency)+'</div></div>'+
+    '</div>';
+  }).join('') + '</div>';
+  return desktop + mobile;
+}
+
+function renderEmptyAccounts(){
+  return '<div class="empty-state">'+
+    '<div class="glyph">＋</div><h3>No accounts yet</h3>'+
+    '<p>Create your first account — Cash, Online, Savings, or anything you like — to start tracking money.</p>'+
+    '<div style="margin-top:14px;"><button class="btn primary" onclick="Ledger.openAccountModal()">'+icon('plus')+' Add your first account</button></div>'+
+  '</div>';
+}
+function renderEmptyTxns(){
+  return '<div class="empty-state">'+
+    '<div class="glyph">＋</div><h3>No transactions yet</h3>'+
+    '<p>Add income, expenses or transfers to see them here.</p>'+
+  '</div>';
+}
+
+function renderAccountCard(a){
+  var bal = accountBalance(a.id);
+  return '<a class="acct-card" style="--tab-color:'+a.color+';" href="#/account/'+a.id+'">'+
+    '<div class="name">'+escapeHtml(a.name)+'</div>'+
+    '<div class="type">'+escapeHtml(a.type)+'</div>'+
+    '<div class="bal tnum'+(bal<0?' negative':'')+'">'+formatMoney(bal, a.currency)+'</div>'+
+  '</a>';
+}
+
+/* Generic transaction list renderer used by Dashboard + Account view (recent lists) */
+function renderTxnListGeneric(list, opts){
+  opts = opts || {};
+  var desktop = '<table class="ledger ledger-desktop"><thead><tr><th>Date</th><th>Description</th>'+(opts.showAccount?'<th>Account</th>':'')+'<th>Category</th><th class="num">Amount</th></tr></thead><tbody>'+
+    list.map(function(t){ return txnRowDesktop(t, opts); }).join('')+
+  '</tbody></table>';
+  var mobile = '<div class="ledger-mobile">'+ list.map(function(t){ return txnRowMobile(t, opts); }).join('') +'</div>';
+  return desktop + mobile;
+}
+
+function txnTypeSign(t){ return t.type==='income' ? '+' : (t.type==='expense' ? '−' : '⇄'); }
+function txnAmountClass(t){ return t.type==='income' ? 'income' : (t.type==='expense' ? 'expense' : 'transfer'); }
+function txnDescLabel(t){
+  if(t.description) return t.description;
+  if(t.type==='transfer') return 'Transfer';
+  var c = t.category ? getCategory(t.category) : null;
+  return c ? c.name : (t.type==='income' ? 'Income' : 'Expense');
+}
+function recurringBadge(t){
+  return t.recurringId ? '<span class="repeat-badge" title="Generated by a recurring transaction">'+icon('repeat')+'</span>' : '';
+}
+function txnMetaLabel(t, opts){
+  var bits = [];
+  if(opts.showAccount){
+    var from = getAccount(t.account);
+    if(t.type==='transfer'){
+      var to = getAccount(t.toAccount);
+      bits.push((from?from.name:'?')+' → '+(to?to.name:'?'));
+    } else bits.push(from?from.name:'?');
+  }
+  if(t.type!=='transfer' && t.category){
+    var c = getCategory(t.category);
+    if(c) bits.push(c.name);
+  }
+  return bits.join(' · ');
+}
+
+function txnRowDesktop(t, opts){
+  var cat = t.category ? getCategory(t.category) : null;
+  var from = getAccount(t.account), to = t.toAccount ? getAccount(t.toAccount) : null;
+  return '<tr onclick="Ledger.openTxnModal(\''+t.id+'\')" style="cursor:pointer;">'+
+    '<td class="muted">'+formatDateShort(t.date)+'</td>'+
+    '<td class="desc">'+recurringBadge(t)+escapeHtml(txnDescLabel(t))+(t.tags&&t.tags.length?'<span class="meta">'+t.tags.map(function(tg){return '#'+escapeHtml(tg);}).join(' ')+'</span>':'')+'</td>'+
+    (opts.showAccount ? '<td class="acct-tag">'+(t.type==='transfer' ? (escapeHtml(from?from.name:'?')+' → '+escapeHtml(to?to.name:'?')) : escapeHtml(from?from.name:'?'))+'</td>' : '')+
+    '<td>'+(cat ? '<span class="cat-chip"><span class="cat-dot" style="background:'+cat.color+';"></span>'+escapeHtml(cat.name)+'</span>' : (t.type==='transfer'?'<span class="muted">—</span>':'<span class="muted">Uncategorized</span>'))+'</td>'+
+    '<td class="num amt '+txnAmountClass(t)+'">'+txnTypeSign(t)+' '+formatMoney(t.amount, t.currency)+'</td>'+
+  '</tr>';
+}
+function txnRowMobile(t, opts){
+  return '<div class="txn-row" onclick="Ledger.openTxnModal(\''+t.id+'\')">'+
+    '<div class="txn-left"><div class="desc">'+recurringBadge(t)+escapeHtml(txnDescLabel(t))+'</div><div class="meta"><span>'+formatDateShort(t.date)+'</span>'+(txnMetaLabel(t,opts)?('<span>·</span><span>'+escapeHtml(txnMetaLabel(t,opts))+'</span>'):'')+'</div></div>'+
+    '<div class="txn-right"><div class="amt '+txnAmountClass(t)+'">'+txnTypeSign(t)+' '+formatMoney(t.amount, t.currency)+'</div></div>'+
+  '</div>';
+}
+
+
+/* ============================================================
+   PER-ACCOUNT VIEW
+   ============================================================ */
+function renderAccountView(root, accountId){
+  var acc = getAccount(accountId);
+  if(!acc){
+    root.innerHTML = '<div class="empty-state"><h3>Account not found</h3><p>It may have been deleted.</p><div style="margin-top:14px;"><a class="btn" href="#/dashboard">Back to dashboard</a></div></div>';
+    return;
+  }
+  var ledger = accountLedger(accountId).slice().reverse(); // most recent first
+  var bal = accountBalance(accountId);
+
+  root.innerHTML =
+    '<div class="view-head"><div><h1>'+escapeHtml(acc.name)+'</h1><div class="sub">'+escapeHtml(acc.type)+' · '+acc.currency+(acc.archived?' · Archived':'')+'</div></div>'+
+      '<div class="btn-row">'+
+        '<button class="btn" onclick="Ledger.openAccountModal(\''+acc.id+'\')">'+icon('edit')+' Edit</button>'+
+        '<button class="btn primary" onclick="Ledger.openTxnModal(null,\''+acc.id+'\')">'+icon('plus')+' Add transaction</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="stat-row">'+
+      '<div class="stat-card"><div class="label">Current balance</div><div class="value tnum'+(bal<0?' expense':'')+'">'+formatMoney(bal, acc.currency)+'</div></div>'+
+      '<div class="stat-card"><div class="label">Starting balance</div><div class="value tnum">'+formatMoney(numOr0(acc.startingBalance), acc.currency)+'</div></div>'+
+      '<div class="stat-card"><div class="label">Transactions</div><div class="value tnum">'+ledger.length+'</div></div>'+
+    '</div>'+
+    '<div class="section-title"><h2>Ledger</h2></div>'+
+    (ledger.length===0 ? renderEmptyTxns() : renderAccountLedgerTable(accountId, ledger));
+}
+
+function renderAccountLedgerTable(accountId, entries){
+  var desktop = '<table class="ledger ledger-desktop"><thead><tr><th>Date</th><th>Description</th><th>Category</th><th class="num">Amount</th><th class="num">Balance</th><th></th></tr></thead><tbody>'+
+    entries.map(function(e){
+      var t = e.txn;
+      var cat = t.category ? getCategory(t.category) : null;
+      return '<tr>'+
+        '<td class="muted">'+formatDateShort(t.date)+'</td>'+
+        '<td class="desc" style="cursor:pointer;" onclick="Ledger.openTxnModal(\''+t.id+'\')">'+recurringBadge(t)+escapeHtml(txnDescLabel(t))+(t.type==='transfer'?('<span class="meta">'+(t.account===accountId?'To '+escapeHtml((getAccount(t.toAccount)||{}).name||'?'):'From '+escapeHtml((getAccount(t.account)||{}).name||'?'))+'</span>'):'')+'</td>'+
+        '<td>'+(cat ? '<span class="cat-chip"><span class="cat-dot" style="background:'+cat.color+';"></span>'+escapeHtml(cat.name)+'</span>' : '<span class="muted">—</span>')+'</td>'+
+        '<td class="num amt '+(e.signed>=0?'income':'expense')+'">'+(e.signed>=0?'+':'−')+' '+formatMoney(Math.abs(e.signed), t.currency)+'</td>'+
+        '<td class="num running">'+formatMoney(e.running, t.currency)+'</td>'+
+        '<td><div class="row-actions"><button class="btn icon-only sm" onclick="Ledger.openTxnModal(\''+t.id+'\')">'+icon('edit')+'</button><button class="btn icon-only sm" onclick="Ledger.confirmDeleteTxn(\''+t.id+'\')">'+icon('trash')+'</button></div></td>'+
+      '</tr>';
+    }).join('')+
+  '</tbody></table>';
+  var mobile = '<div class="ledger-mobile">'+ entries.map(function(e){
+    var t = e.txn;
+    return '<div class="txn-row" onclick="Ledger.openTxnModal(\''+t.id+'\')">'+
+      '<div class="txn-left"><div class="desc">'+recurringBadge(t)+escapeHtml(txnDescLabel(t))+'</div><div class="meta">'+formatDateShort(t.date)+'</div></div>'+
+      '<div class="txn-right"><div class="amt '+(e.signed>=0?'income':'expense')+'">'+(e.signed>=0?'+':'−')+' '+formatMoney(Math.abs(e.signed), t.currency)+'</div><span class="running">'+formatMoney(e.running, t.currency)+'</span></div>'+
+    '</div>';
+  }).join('') + '</div>';
+  return desktop + mobile;
+}
+
+
+/* ============================================================
+   ALL TRANSACTIONS VIEW — filter, sort, search, inline edit/delete
+   ============================================================ */
+function renderTransactionsView(root){
+  var f = state.filters;
+  var accs = listAccounts({includeArchived:true});
+  var cats = listCategories();
+  var list = filteredTransactions(f);
+
+  root.innerHTML =
+    '<div class="view-head"><div><h1>All transactions</h1><div class="sub">'+list.length+' transaction'+(list.length===1?'':'s')+'</div></div>'+
+      '<div class="btn-row"><button class="btn" onclick="Ledger.exportFilteredCSV()">'+icon('download')+' Export CSV</button><button class="btn primary" onclick="Ledger.openTxnModal()">'+icon('plus')+' Add transaction</button></div>'+
+    '</div>'+
+    '<div class="filters-bar">'+
+      '<div class="field search"><label>Search</label><input type="text" id="flt-q" placeholder="Description, notes, tags…" value="'+escapeHtml(f.q)+'" oninput="Ledger.updateFilter(\'q\',this.value)"></div>'+
+      '<div class="field"><label>Account</label><select id="flt-account" onchange="Ledger.updateFilter(\'account\',this.value)">'+
+        '<option value="">All accounts</option>'+ accs.map(function(a){ return '<option value="'+a.id+'"'+(f.account===a.id?' selected':'')+'>'+escapeHtml(a.name)+'</option>'; }).join('') +
+      '</select></div>'+
+      '<div class="field"><label>Category</label><select id="flt-category" onchange="Ledger.updateFilter(\'category\',this.value)">'+
+        '<option value="">All categories</option>'+ cats.map(function(c){ return '<option value="'+c.id+'"'+(f.category===c.id?' selected':'')+'>'+escapeHtml(c.name)+'</option>'; }).join('') +
+      '</select></div>'+
+      '<div class="field"><label>Type</label><select id="flt-type" onchange="Ledger.updateFilter(\'type\',this.value)">'+
+        ['','income','expense','transfer'].map(function(t){ return '<option value="'+t+'"'+(f.type===t?' selected':'')+'>'+(t?t.charAt(0).toUpperCase()+t.slice(1):'All types')+'</option>'; }).join('') +
+      '</select></div>'+
+      '<div class="field"><label>From</label><input type="date" id="flt-from" value="'+f.from+'" onchange="Ledger.updateFilter(\'from\',this.value)"></div>'+
+      '<div class="field"><label>To</label><input type="date" id="flt-to" value="'+f.to+'" onchange="Ledger.updateFilter(\'to\',this.value)"></div>'+
+      '<div class="field"><label>Sort</label><select id="flt-sort" onchange="Ledger.updateFilter(\'sort\',this.value)">'+
+        '<option value="date_desc"'+(f.sort==='date_desc'?' selected':'')+'>Newest first</option>'+
+        '<option value="date_asc"'+(f.sort==='date_asc'?' selected':'')+'>Oldest first</option>'+
+        '<option value="amount_desc"'+(f.sort==='amount_desc'?' selected':'')+'>Amount: high to low</option>'+
+        '<option value="amount_asc"'+(f.sort==='amount_asc'?' selected':'')+'>Amount: low to high</option>'+
+      '</select></div>'+
+      (hasActiveFilters(f) ? '<div class="field"><label>&nbsp;</label><button class="btn sm" onclick="Ledger.clearFilters()">Clear filters</button></div>' : '')+
+    '</div>'+
+    (list.length===0 ? renderEmptyTxns() : renderTxnListGeneric(list, {showAccount:true}));
+}
+function hasActiveFilters(f){ return !!(f.q||f.account||f.category||f.type||f.from||f.to); }
+function updateFilter(key, val){
+  state.filters[key] = val;
+  render();
+  // restore focus to the search box after re-render if that's what's being typed in
+  if(key==='q'){ var el = qs('#flt-q'); if(el){ el.focus(); el.value = val; el.setSelectionRange(val.length,val.length); } }
+}
+function clearFilters(){
+  state.filters = {q:'', account:'', category:'', type:'', from:'', to:'', sort:'date_desc'};
+  render();
+}
+
+
+/* ============================================================
+   REPORTS VIEW
+   ============================================================ */
+var reportsState = { month: currentMonthKey() };
+
+function renderReportsView(root){
+  var ym = reportsState.month;
+  var totals = monthlyTotals(ym);
+  var months = lastNMonthKeys(12);
+  var breakdown = categoryBreakdown(ym, 'expense');
+  var accts = accountBreakdown();
+
+  root.innerHTML =
+    '<div class="view-head"><div><h1>Reports</h1><div class="sub">Monthly summaries, category and account breakdowns</div></div>'+
+      '<div class="btn-row"><button class="btn" onclick="Ledger.exportAllCSV()">'+icon('download')+' Export all (CSV)</button></div>'+
+    '</div>'+
+    '<div class="filters-bar">'+
+      '<div class="field"><label>Month</label><select id="rpt-month" onchange="Ledger.setReportMonth(this.value)">'+
+        months.map(function(m){ return '<option value="'+m+'"'+(m===ym?' selected':'')+'>'+monthLabel(m)+'</option>'; }).join('')+
+      '</select></div>'+
+    '</div>'+
+    '<div class="stat-row">'+
+      '<div class="stat-card"><div class="label">Income — '+monthLabel(ym)+'</div><div class="value income tnum">'+formatMoney(totals.income, state.data.meta.defaultCurrency)+'</div></div>'+
+      '<div class="stat-card"><div class="label">Expenses — '+monthLabel(ym)+'</div><div class="value expense tnum">'+formatMoney(totals.expense, state.data.meta.defaultCurrency)+'</div></div>'+
+      '<div class="stat-card"><div class="label">Net</div><div class="value tnum'+(totals.net<0?' expense':'')+'">'+formatMoney(totals.net, state.data.meta.defaultCurrency)+'</div></div>'+
+    '</div>'+
+
+    '<div class="chart-grid">'+
+      '<div class="chart-card"><h3>Monthly income vs. expenses (12 months)</h3><div class="chart-wrap"><canvas id="chart-monthly-summary"></canvas></div></div>'+
+      '<div class="chart-card"><h3>Category breakdown — '+monthLabel(ym)+'</h3><div class="chart-wrap" id="chart-cat-breakdown-wrap"><canvas id="chart-cat-breakdown"></canvas></div></div>'+
+    '</div>'+
+
+    '<div class="section-title"><h2>Per-account breakdown</h2></div>'+
+    '<div class="card"><table class="ledger ledger-desktop"><thead><tr><th>Account</th><th>Type</th><th class="num">Balance</th></tr></thead><tbody>'+
+      accts.map(function(x){ return '<tr><td class="desc">'+escapeHtml(x.account.name)+'</td><td class="muted">'+escapeHtml(x.account.type)+'</td><td class="num amt '+(x.balance<0?'expense':'income')+'">'+formatMoney(x.balance,x.account.currency)+'</td></tr>'; }).join('')+
+    '</tbody></table>'+
+    '<div class="ledger-mobile">'+ accts.map(function(x){ return '<div class="txn-row"><div class="txn-left"><div class="desc">'+escapeHtml(x.account.name)+'</div><div class="meta">'+escapeHtml(x.account.type)+'</div></div><div class="txn-right"><div class="amt '+(x.balance<0?'expense':'income')+'">'+formatMoney(x.balance,x.account.currency)+'</div></div></div>'; }).join('')+'</div>'+
+    '</div>'+
+
+    '<div class="section-title"><h2>Category breakdown table</h2></div>'+
+    (breakdown.length===0 ? '<div class="empty-state"><p>No expenses recorded for '+monthLabel(ym)+'.</p></div>' :
+      '<div class="card"><table class="ledger ledger-desktop"><thead><tr><th>Category</th><th class="num">Total</th><th class="num">Share</th></tr></thead><tbody>'+
+        breakdown.map(function(b){
+          var pct = totals.expense>0 ? (b.total/totals.expense*100) : 0;
+          return '<tr><td><span class="cat-chip"><span class="cat-dot" style="background:'+b.color+';"></span>'+escapeHtml(b.name)+'</span></td><td class="num amt expense">'+formatMoney(b.total, state.data.meta.defaultCurrency)+'</td><td class="num muted">'+pct.toFixed(1)+'%</td></tr>';
+        }).join('')+
+      '</tbody></table>'+
+      '<div class="ledger-mobile">'+ breakdown.map(function(b){
+        var pct = totals.expense>0 ? (b.total/totals.expense*100) : 0;
+        return '<div class="txn-row"><div class="txn-left"><div class="desc">'+escapeHtml(b.name)+'</div><div class="meta">'+pct.toFixed(1)+'% of expenses</div></div><div class="txn-right"><div class="amt expense">'+formatMoney(b.total, state.data.meta.defaultCurrency)+'</div></div></div>';
+      }).join('')+'</div></div>'
+    );
+
+  drawMonthlySummaryChart(months);
+  drawCategoryBreakdownChart(breakdown);
+}
+function setReportMonth(m){ reportsState.month = m; render(); }
+function lastNMonthKeys(n){
+  var out=[]; var today=new Date();
+  for(var i=0;i<n;i++){ var d=new Date(today.getFullYear(), today.getMonth()-i, 1); out.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); }
+  return out;
+}
+
+/* ============================================================
+   CSV EXPORT
+   ============================================================ */
+function txnToRow(t){
+  var acc = getAccount(t.account), to = t.toAccount ? getAccount(t.toAccount) : null, cat = t.category ? getCategory(t.category) : null;
+  return {
+    date: t.date, type: t.type, account: acc?acc.name:'', to_account: to?to.name:'',
+    category: cat?cat.name:'', amount: t.amount, currency: t.currency,
+    description: t.description, notes: t.notes, tags: (t.tags||[]).join('|'),
+    recurring: t.recurringId ? 'yes' : ''
+  };
+}
+var CSV_HEADERS = ['date','type','account','to_account','category','amount','currency','description','notes','tags','recurring'];
+function exportAllCSV(){
+  var rows = sortTxnsChrono(state.data.transactions).map(txnToRow);
+  var csv = toCSV(rows, CSV_HEADERS);
+  downloadBlob('cashbook-all-transactions.csv', csv, 'text/csv');
+  toast('Exported '+rows.length+' transactions.', 'ok');
+}
+function exportFilteredCSV(){
+  var rows = filteredTransactions(state.filters).map(txnToRow);
+  var csv = toCSV(rows, CSV_HEADERS);
+  downloadBlob('cashbook-transactions.csv', csv, 'text/csv');
+  toast('Exported '+rows.length+' transactions.', 'ok');
+}
+
+/* ============================================================
+   CHARTS (Chart.js)
+   ============================================================ */
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function destroyChart(id){ if(state.charts[id]){ state.charts[id].destroy(); delete state.charts[id]; } }
+function chartFallback(canvas, msg){
+  if(canvas && canvas.parentElement) canvas.parentElement.innerHTML =
+    '<div class="chart-empty"><span>'+msg+'</span><button class="btn sm" style="margin-top:8px;" onclick="Ledger.retryChartsLoad(this)">'+icon('refresh')+' Retry</button></div>';
+}
+var CHART_LIB_MSG = 'Charts need the Chart.js library from a CDN. It could not be loaded from any of a few mirrors — a network filter, firewall, or ad-blocker on this connection may be blocking it, even with wifi otherwise working.';
+
+// Retries the CDN chain on demand (e.g. the "Retry" button in a fallback
+// message) and re-renders once/if it succeeds, without a full page reload.
+function retryChartsLoad(btn){
+  if(btn){ btn.disabled = true; btn.textContent = 'Retrying…'; }
+  window.loadChartJs(function(ok){
+    if(ok){ toast('Chart library loaded.', 'ok'); render(); }
+    else toast('Still could not reach any chart CDN. Check your network, firewall, or ad-blocker.', 'error');
+  });
+}
+// Called by the loader in <head> once it succeeds or exhausts every mirror.
+// If charts are on screen, re-render so they appear without user action.
+window.__onChartJsReady = function(ok){
+  if(ok && state.route && (state.route.name==='dashboard' || state.route.name==='reports')) render();
+};
+
+function drawBalanceTrendChart(){
+  var canvas = qs('#chart-balance-trend');
+  if(!canvas) return;
+  if(typeof Chart==='undefined'){ chartFallback(canvas, CHART_LIB_MSG); return; }
+  var series = balanceTrendSeries(6);
+  destroyChart('chart-balance-trend');
+  state.charts['chart-balance-trend'] = new Chart(canvas, {
+    type:'line',
+    data:{ labels: series.labels, datasets:[{
+      data: series.values, borderColor: cssVar('--accent'), backgroundColor: cssVar('--accent-soft'),
+      fill:true, tension:.35, pointRadius:3, pointBackgroundColor: cssVar('--accent')
+    }]},
+    options: baseChartOptions({ y:{ ticks:{ callback:function(v){ return formatMoney(v, series.currency); } } } })
+  });
+}
+
+function drawCategorySpendChart(ym){
+  var canvas = qs('#chart-cat-spend');
+  if(!canvas) return;
+  if(typeof Chart==='undefined'){ chartFallback(canvas, CHART_LIB_MSG); return; }
+  var breakdown = categoryBreakdown(ym, 'expense').slice(0,7);
+  destroyChart('chart-cat-spend');
+  if(breakdown.length===0){
+    qs('#chart-cat-wrap').innerHTML = '<div class="chart-empty">No expenses recorded this month yet.</div>';
+    return;
+  }
+  state.charts['chart-cat-spend'] = new Chart(canvas, {
+    type:'doughnut',
+    data:{ labels: breakdown.map(function(b){return b.name;}), datasets:[{ data: breakdown.map(function(b){return b.total;}), backgroundColor: breakdown.map(function(b){return b.color;}), borderColor: cssVar('--bg-elev'), borderWidth:2 }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color: cssVar('--ink-soft'), boxWidth:10, font:{size:11} } } } }
+  });
+}
+
+function drawMonthlySummaryChart(months){
+  var canvas = qs('#chart-monthly-summary');
+  if(!canvas) return;
+  if(typeof Chart==='undefined'){ chartFallback(canvas, CHART_LIB_MSG); return; }
+  var mrev = months.slice().reverse();
+  var incomeData = mrev.map(function(m){ return monthlyTotals(m).income; });
+  var expenseData = mrev.map(function(m){ return monthlyTotals(m).expense; });
+  destroyChart('chart-monthly-summary');
+  state.charts['chart-monthly-summary'] = new Chart(canvas, {
+    type:'bar',
+    data:{ labels: mrev.map(monthLabel), datasets:[
+      { label:'Income', data:incomeData, backgroundColor: cssVar('--income'), borderRadius:4, maxBarThickness:22 },
+      { label:'Expenses', data:expenseData, backgroundColor: cssVar('--expense'), borderRadius:4, maxBarThickness:22 }
+    ]},
+    options: baseChartOptions({ y:{ ticks:{ callback:function(v){ return formatMoney(v, state.data.meta.defaultCurrency); } } } }, true)
+  });
+}
+
+function drawCategoryBreakdownChart(breakdown){
+  var canvas = qs('#chart-cat-breakdown');
+  if(!canvas) return;
+  if(typeof Chart==='undefined'){ chartFallback(canvas, CHART_LIB_MSG); return; }
+  destroyChart('chart-cat-breakdown');
+  if(breakdown.length===0){
+    qs('#chart-cat-breakdown-wrap').innerHTML = '<div class="chart-empty">No expenses recorded for this month.</div>';
+    return;
+  }
+  var top = breakdown.slice(0,8);
+  var opts = baseChartOptions({ x:{ ticks:{ callback:function(v){ return formatMoney(v, state.data.meta.defaultCurrency); } } } });
+  opts.indexAxis = 'y';
+  state.charts['chart-cat-breakdown'] = new Chart(canvas, {
+    type:'bar',
+    data:{ labels: top.map(function(b){return b.name;}), datasets:[{ data: top.map(function(b){return b.total;}), backgroundColor: top.map(function(b){return b.color;}), borderRadius:4, maxBarThickness:20 }]},
+    options: opts
+  });
+}
+
+function baseChartOptions(extraScales, showLegend){
+  var ink = cssVar('--ink-soft'), border = cssVar('--border-soft');
+  var opts = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ display: !!showLegend, position:'bottom', labels:{ color: ink, boxWidth:10, font:{size:11} } } },
+    scales:{
+      x:{ ticks:{ color: ink, font:{size:11} }, grid:{ display:false } },
+      y:{ ticks:{ color: ink, font:{size:11} }, grid:{ color: border } }
+    }
+  };
+  if(extraScales && extraScales.y) Object.assign(opts.scales.y, extraScales.y);
+  if(extraScales && extraScales.x) Object.assign(opts.scales.x, extraScales.x);
+  return opts;
+}
+
+
+/* ============================================================
+   THEME + MISC GLOBAL ACTIONS
+   ============================================================ */
+function toggleTheme(){
+  applyTheme(state.theme==='dark' ? 'light' : 'dark');
+  render();
+}
+
+function togglePrivacyMode(){
+  state.privacyMode = !state.privacyMode;
+  savePrivacyMode(state.privacyMode);
+  render();
+}
+
+function nav(hash){ navigate(hash); }
+
+/* ============================================================
+   PUBLIC API (exposed for inline onclick handlers in generated HTML)
+   ============================================================ */
+window.Ledger = {
+  nav: nav,
+  retryChartsLoad: retryChartsLoad,
+  openTxnModal: openTxnModal, pickTxnType: pickTxnType, submitTxnForm: submitTxnForm,
+  confirmDeleteTxn: confirmDeleteTxn, doDeleteTxn: doDeleteTxn, checkTransferCurrency: checkTransferCurrency,
+  toggleRepeatSection: toggleRepeatSection, pickRepeatEnd: pickRepeatEnd, updateRepeatPreview: updateRepeatPreview,
+  openRecurringModal: openRecurringModal, pickRecurringType: pickRecurringType, pickRepeatEnd_: pickRepeatEnd_,
+  updateRecurringPreview: updateRecurringPreview, submitRecurringForm: submitRecurringForm,
+  confirmDeleteRecurring: confirmDeleteRecurring, doDeleteRecurring: doDeleteRecurring, toggleRecurringActive: toggleRecurringActive,
+  openAccountModal: openAccountModal, submitAccountForm: submitAccountForm, pickSwatch: pickSwatch,
+  toggleArchiveAccount: toggleArchiveAccount, confirmDeleteAccount: confirmDeleteAccount, doDeleteAccount: doDeleteAccount,
+  confirmDeleteAccountCascade: confirmDeleteAccountCascade, doDeleteAccountCascade: doDeleteAccountCascade,
+  openCategoryModal: openCategoryModal, submitCategoryForm: submitCategoryForm, pickTypeToggle: pickTypeToggle, pickIconSwatch: pickIconSwatch,
+  confirmDeleteCategory: confirmDeleteCategory, doDeleteCategory: doDeleteCategory,
+  closeModal: closeModal,
+  syncNow: syncNow, testGiteaForm: testGiteaForm, saveGiteaForm: saveGiteaForm,
+  resolveConflictKeepMine: resolveConflictKeepMine, resolveConflictLoadTheirs: resolveConflictLoadTheirs,
+  setDefaultCurrency: setDefaultCurrency, disconnectStorage: disconnectStorage, doDisconnectStorage: doDisconnectStorage,
+  chooseOnboardMode: chooseOnboardMode, onboardBackToPicker: onboardBackToPicker,
+  onboardCreateLocalFile: onboardCreateLocalFile, onboardOpenLocalFile: onboardOpenLocalFile,
+  onboardManualLoad: onboardManualLoad, onboardStartManualFresh: onboardStartManualFresh,
+  switchSettingsStorageTab: switchSettingsStorageTab,
+  settingsCreateLocalFile: settingsCreateLocalFile, settingsOpenLocalFile: settingsOpenLocalFile,
+  settingsManualLoad: settingsManualLoad, manualSaveLocalFile: manualSaveLocalFile,
+  toggleTheme: toggleTheme, togglePrivacyMode: togglePrivacyMode,
+  updateFilter: updateFilter, clearFilters: clearFilters,
+  setReportMonth: setReportMonth, exportAllCSV: exportAllCSV, exportFilteredCSV: exportFilteredCSV
+};
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init(){
+  state.settings = loadSettings();
+  state.theme = loadTheme();
+  applyTheme(state.theme);
+  state.privacyMode = loadPrivacyMode();
+  state.route = parseHash();
+  initData();
+}
+
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+
+})();
+
+</script>
+</body>
+</html>
