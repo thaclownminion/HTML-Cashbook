@@ -27,9 +27,9 @@ And you can either store your data locally on your device or share it over multi
 
 # Credits:
 Creator: Apophis
-Fus suggestions and bugs please add an issue [here](https://github.com/thaclownminion/HTML-Cashbook/issues)
+For suggestions and bugs please add an issue [here](https://github.com/thaclownminion/HTML-Cashbook/issues)
 
-(This app used to be called "eye care")
+E-mail: apophisdevs@protonmail.com
 
 Support me to be able to expand this project and other apps:
 
