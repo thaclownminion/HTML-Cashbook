@@ -25,11 +25,12 @@ And you can either store your data locally on your device or share it over multi
 - The live syncing won't work on firefox and safari due to them not supporting live file updates.
   You can still use it but you just have to manually update your .json file, don't forget this.
 
+
 # Credits:
 Creator: Apophis
-For suggestions and bugs please add an issue [here](https://github.com/thaclownminion/HTML-Cashbook/issues)
 
-E-mail: apophisdevs@protonmail.com
+For suggestions and bugs please add an issue [here](https://github.com/thaclownminion/Descreen/issues)
+or contact me through my e-mail: apophisdevs@protonmail.com
 
 Support me to be able to expand this project and other apps:
 
